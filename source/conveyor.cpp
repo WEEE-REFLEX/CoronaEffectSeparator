@@ -22,7 +22,7 @@
 #include "core/CHmath.h"
 #include <irrlicht.h>
 #include <fstream>
-//#include "unit_PYTHON/ChPython.h"
+#include "unit_PYTHON/ChPython.h"
 
 
 // Use the namespace of Chrono
@@ -81,6 +81,10 @@ const double ynozzlesize = 0.5;
 const double ynozzle = 0.6;
 const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width;
 
+// set as true for saving log files each n frames
+bool savefile = false;
+int saveEachNframes = 10;
+
 int totframes = 0;
 	
 
@@ -105,6 +109,12 @@ public:
 		e_fraction_sphere,
 		e_fraction_others
 	} fraction;
+	enum 
+	{
+		e_mat_plastic,
+		e_mat_metal,
+		e_mat_other
+	} material_type;
 
 	// default constructor with initialization
 	ElectricParticleProperty()
@@ -113,6 +123,7 @@ public:
 		conductivity = 0;
 		birthdate = 0;
 		fraction = ElectricParticleProperty::e_fraction_others;
+		material_type = ElectricParticleProperty::e_mat_other;
 	}
 	
 };
@@ -1029,8 +1040,8 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	application.AssetBindAll();
 	application.AssetUpdateAll();
 	application.AddShadowAll();
-*/
 
+*/
 
 
 	// Create the conveyor belt (this is a pure Chrono::Engine object, 
@@ -1082,6 +1093,9 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	record << "Mass (kg)" << "\t";
 	record << "Conductivity" << "\n";
 
+	int stepnum = 0;	
+	int savenum = 0;
+
 	while(application.GetDevice()->run()) 
 	{
 		application.GetVideoDriver()->beginScene(true, true, SColor(255,140,161,192));
@@ -1124,6 +1138,43 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 			// Maybe the user played with the slider and changed STATIC_speed...
 		 	mconveyor->SetConveyorSpeed(STATIC_speed);
+
+			//***ALEX esempio salvataggio su file...
+			stepnum++;
+			if ((stepnum % saveEachNframes == 0) && (savefile == true))
+			{
+				savenum++;
+				char buffer[120];
+				sprintf(buffer, "esempio_output%05d.txt", savenum);
+				ChStreamOutAsciiFile file_for_output(buffer);
+				for (unsigned int i=0; i<mphysicalSystem.Get_bodylist()->size(); i++)
+				{
+					ChBody* abody = (*mphysicalSystem.Get_bodylist())[i];
+
+					// Fetch the ElectricParticleProperty asset from the list
+					for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
+					{
+						ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
+						if (myasset.IsType<ElectricParticleProperty>())
+						{
+							// ok, its a particle!
+							ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
+							double my_cond  = electricproperties->conductivity ; // ..
+							// Save on disk some infos...
+							file_for_output << abody->GetPos().x << ", "
+											<< abody->GetPos().y << ", "
+											<< abody->GetPos().z << ", "
+											<< abody->GetPos_dt().x << ", "
+											<< abody->GetPos_dt().y << ", "
+											<< abody->GetPos_dt().z << ", "
+											<< my_cond << "\n";
+						}
+					}
+				}
+			} // end saving code
+
+
+			
 		
 		}
 
