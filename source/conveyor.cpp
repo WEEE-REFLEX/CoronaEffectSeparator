@@ -44,7 +44,7 @@ using namespace std;
 // programming practice, but enough for quick tests)
 
 double STATIC_flow = 1; 
-double STATIC_speed = 1.87; //[m/s]
+double STATIC_speed = 0.87; //[m/s]
 
 const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double drumspeed = 261; //[rad/s]

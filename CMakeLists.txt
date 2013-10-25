@@ -26,7 +26,8 @@ PROJECT(EddyCurrentConveyor)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
-find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_POSTPROCESS unit_FEM unit_PYPARSER)
+#find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_POSTPROCESS unit_FEM unit_PYPARSER)
+find_package(ChronoEngine   COMPONENTS unit_IRRLICHT)
 
 
 
@@ -83,23 +84,23 @@ ADD_CUSTOM_COMMAND(
 	POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_DEBUG}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_DEBUG}/Irrlicht.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 		
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_RELEASE}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Release/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_RELEASE}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Release/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_RELEASE}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Release/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_RELEASE}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Release/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_RELEASE}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Release/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_RELEASE}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Release/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_RELEASE}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Release/"
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_RELEASE}/Irrlicht.dll"  "${CMAKE_BINARY_DIR}/Release/"
 		
