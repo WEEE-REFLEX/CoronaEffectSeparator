@@ -27,7 +27,7 @@ PROJECT(EddyCurrentConveyor)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 #find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_POSTPROCESS unit_FEM unit_PYPARSER)
-find_package(ChronoEngine   COMPONENTS unit_IRRLICHT)
+find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_PYPARSER)
 
 
 
@@ -86,8 +86,8 @@ ADD_CUSTOM_COMMAND(
 		"${CH_BINDIR_DEBUG}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_DEBUG}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-#	COMMAND ${CMAKE_COMMAND} -E copy
-#		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+	COMMAND ${CMAKE_COMMAND} -E copy
+		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_DEBUG}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 	COMMAND ${CMAKE_COMMAND} -E copy
@@ -97,8 +97,8 @@ ADD_CUSTOM_COMMAND(
 		"${CH_BINDIR_RELEASE}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Release/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_RELEASE}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Release/"
-#	COMMAND ${CMAKE_COMMAND} -E copy
-#		"${CH_BINDIR_RELEASE}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Release/"
+	COMMAND ${CMAKE_COMMAND} -E copy
+		"${CH_BINDIR_RELEASE}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Release/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_RELEASE}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Release/"
 	COMMAND ${CMAKE_COMMAND} -E copy
