@@ -63,8 +63,8 @@ const double h1 = (pow(L,2)+pow(drumdiameter,2)-(electrodediameter,2))/(2*L); //
 const double h2 = (pow(L,2)-pow(drumdiameter,2)+(electrodediameter,2))/(2*L);//analytical parameter****ida
 const double j = sqrt(pow(h1,2)-pow(drumdiameter,2));//analytical parameter****ida
 const double f = U/log((h1+j-drumdiameter)*(h2+j-drumdiameter))/((drumdiameter+j-h1)*(electrodediameter+j-h2));//analytical parameter****ida
-const double x_drum=0;
-const double y_drum=0.228;
+const double x_drum = (drumdiameter/2)*cos(alpha);
+const double y_drum = (drumdiameter/2)*sin(alpha);
 const double xuno=x_drum*cos(alpha)+y_drum*sin(alpha);//analytical parameter****ida
 const double yuno=y_drum*cos(alpha)-x_drum*sin(alpha);//analytical parameter****ida
 
