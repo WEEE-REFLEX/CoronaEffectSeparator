@@ -672,7 +672,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			if (electricproperties->material_type == ElectricParticleProperty::e_mat_metal)
 			{ 
 				// charge the particle? (contact w. drum)
-				if ((distx > 0.08) && (disty > 0))
+				if ((distx > 0.005) && (disty > 0))
 				{
 					electricproperties->charge = ((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E); // charge
 				}
@@ -698,7 +698,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				
 
 				// charge the particle? (contact w. drum)
-				if ((distx > 0.08) && (disty > 0))
+				if ((distx > 0.005) && (disty > 0))
 				{
 					electricproperties->charge = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1500000*(epsilonR/(epsilonR+2)); // charge
 				}
@@ -711,25 +711,14 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				ChVector<> ElectricImageForce;
 
 
-				if (distx > 0.08)
-				{
+               // NB: per applicare questa formula mi servirebbe la carica accumulata dalle particelle plstiche**ida
 
-                    // NB: per applicare questa formula mi servirebbe la carica accumulata dalle particelle plstiche**ida
-
-					//ElectricImageForce.x = -((pow(((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E),2)/(4*CH_C_PI*epsilon*pow((2*average_rad),2)))*cos(atan2(disty,distx)));
-					//ElectricImageForce.y = -((pow(((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E),2)/(4*CH_C_PI*epsilon*pow((2*average_rad),2)))*sin(atan2(disty,distx)));
-				    //ElectricImageForce.x = -0.2*cos(atan2(disty,distx));
-					//ElectricImageForce.y = -0.2*sin(atan2(disty,distx));
-					//ElectricImageForce.x = (((4/3*CH_C_PI*1820*pow(average_rad,3)*pow(drumspeed,2)*(0.5*drumdiameter))*cos(atan2(disty,distx))-((4/3*CH_C_PI*1820*pow(average_rad,3)*9.81)*cos(180-(atan2(disty,distx))))*cos((atan2(disty,distx)))-(6*CH_C_PI*eta*average_rad*sqrt(pow(velocityx,2)+pow(velocityy,2))*cos(90-(atan2(disty,distx)))))/cos(atan2(disty,distx)));
-					//ElectricImageForce.y = (((4/3*CH_C_PI*1820*pow(average_rad,3)*pow(drumspeed,2)*(0.5*drumdiameter))*sin(atan2(disty,distx))-((4/3*CH_C_PI*1820*pow(average_rad,3)*9.81)*cos(180-(atan2(disty,distx))))*sin((atan2(disty,distx)))+(6*CH_C_PI*eta*average_rad*sqrt(pow(velocityx,2)+pow(velocityy,2))*sin(90-(atan2(disty,distx)))))/sin(atan2(disty,distx)));
-					ElectricImageForce.x = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
-					ElectricImageForce.y = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
-				  	ElectricImageForce.z = 0;	
+				ElectricImageForce.x = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
+				ElectricImageForce.y = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
+				ElectricImageForce.z = 0;	
 						
-				} // end if before rotor
 				
 
-//ElectricImageForce *= 800;//***TEST***
 
 				abody->Accumulate_force(ElectricImageForce, abody->GetPos(), false);
 				
@@ -1242,6 +1231,7 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
 	mcyl->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
 	mcyl->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
+	mcyl->GetCylinderGeometry().rad = drumradius;
 	mrigidBodyDrum->AddAsset(mcyl);
 	
 	// Finally, do not forget to add the body to the system:
