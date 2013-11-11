@@ -48,8 +48,8 @@ double STATIC_flow = 1;
 double STATIC_speed = 0.87; //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
-const double epsilon = 0.00000000000885941; // dielectric constant [F/m] *****ida
-const double epsilonO = 0.000000000008854187; //vacuum permittivity
+const double epsilon = 0.00000000000885941; // dielectric constant [F/m] *****ida e
+const double epsilonO = 0.000000000008854187; //vacuum permittività
 const double epsilonR = 2.5; //relative permeability
 const double drumspeed = 6.28; //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
@@ -57,7 +57,7 @@ const double numberofpoles = 9;
 const double intensity = 0.32; 
 const double drumdiameter = 0.228;
 const double electrodediameter = 0.038;
-const double U = -25000; // supplied high-voltage [v]
+const double U = 25000; // supplied high-voltage [v]
 const double L = 0.21; //certer distance of rotating roll electrode and electrostatic pole *****ida
 const double alpha = CH_C_PI*(1/6); //angle of horizontal line and electrodes center line *****ida
 const double theta = CH_C_PI*(1/4); //angle at detachment point *****ida
@@ -97,6 +97,9 @@ const double ynozzlesize = 0.5;
 const double ynozzle = 0.3;
 const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato avanti****ida
 
+const double densityMetal = 1820;
+const double densityPlastic = 900;
+
 
 
 // set as true for saving log files each n frames
@@ -119,9 +122,8 @@ public:
 	// data for this type of asset 
 	ChVector<> Cdim;
 	double conductivity;
-	double densityMetal; //****ida
-	double densityPlastic; //****ida
 	double birthdate;
+	double charge;		//***ida + ale (coulomb, for plastic)
 	enum 
 	{
 		e_fraction_box,
@@ -144,6 +146,7 @@ public:
 		birthdate = 0;
 		fraction = ElectricParticleProperty::e_fraction_others;
 		material_type = ElectricParticleProperty::e_mat_other;
+		charge = 0;
 	}
 	
 };
@@ -178,6 +181,12 @@ public:
 				scrollbar_speed->setPos(100);
 				text_speed = application->GetIGUIEnvironment()->addStaticText(
 								L"Conveyor speed [m/s]:", rect<s32>(650,125,750,140), false);
+
+				// ..add GUI checkmark to enable plotting forces
+				checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(510,165, 510+150,165+20),
+								0, 105, L"Plot applied CES forces");
+				
+
 			}
 
 	bool OnEvent(const SEvent& event)
@@ -213,10 +222,12 @@ public:
 private: 
 	ChIrrAppInterface* application;
 
+public:
 	IGUIScrollBar*  scrollbar_flow;
 	IGUIStaticText* text_flow;
 	IGUIScrollBar*  scrollbar_speed;
 	IGUIStaticText* text_speed;
+	IGUICheckBox*	checkbox_plotforces;
 };
 
 
@@ -233,15 +244,14 @@ void create_debris(double dt, double particles_second,
 	double box_fraction = 0;//0.4; // 40% cylinders
 	double cyl_fraction = 1-box_fraction-sph_fraction;
 
-	double densityMetal = 1820;
-	double densityPlastic = 900;
 	double sphrad = 0.0009;
 	double cylhei = 0.035;
-	double cylmass = 0.0095; //CH_C_PI*pow(sphrad,2)*cylhei*density;
-	double sphmass = 0.0095;//1.3333*CH_C_PI*pow(sphrad,3)*density;
-	double sphinertia = 0.4*pow(sphrad,2)*sphmass;
-	double cylinertia = 0.0833*(pow(cylhei,2)+3*pow(sphrad,2))*cylmass;//0.0833*(pow(cylhei,2)+3*pow(sphrad,2))*cylmass;
-	double cylinertia2 = 0.5*pow(sphrad,2)*cylmass; //0.5*pow(sphrad,2)*cylmass;
+	double cylrad = sphrad;
+	double cylmass = CH_C_PI*pow(cylrad,2)*cylhei* 1.0;  // now with default 1.0 density
+	double sphmass = (4./3.)*CH_C_PI*pow(sphrad,3)* 1.0; // now with default 1.0 density
+	double sphinertia = 0.4*pow(sphrad,2)*sphmass;      // now with default 1.0 density
+	double cylinertia = 0.0833*(pow(cylhei,2)+3*pow(sphrad,2))*cylmass;//0.0833*(pow(cylhei,2)+3*pow(sphrad,2))*cylmass;  // now with default 1.0 density
+	double cylinertia2 = 0.5*pow(sphrad,2)*cylmass; //0.5*pow(sphrad,2)*cylmass; // now with default 1.0 density
 	
 
 	double exact_particles_dt = dt * particles_second;
@@ -270,21 +280,30 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.8f); 
+			mrigidBody->SetImpactC(0.5f); 
+			mrigidBody->SetRollingFriction(0.1);
+			mrigidBody->SetSpinningFriction(0.1);
 			//mrigidBody->GetCollisionModel()->SetFamily(5);
 			//mrigidBody->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
 
 			// Define a collision shape 
 			mrigidBody->GetCollisionModel()->ClearModel();
 			mrigidBody->GetCollisionModel()->AddSphere(sphrad);
+			//mrigidBody->GetCollisionModel()->AddSphere(sphrad, &ChVector<>(0.005,0,0)); // etc. optional
 			mrigidBody->GetCollisionModel()->BuildModel();
 			mrigidBody->SetCollide(true);
 
 			// Attach a visualization shape asset. 
 			ChSharedPtr<ChSphereShape> msphere(new ChSphereShape);
-			msphere->GetSphereGeometry().rad = sphrad;
+			msphere->GetSphereGeometry().rad = sphrad*5; // test****
 			msphere->GetSphereGeometry().center = ChVector<>(0,0,0);
 			mrigidBody->AddAsset(msphere);
+			/* etc. optional
+			ChSharedPtr<ChSphereShape> msphere2(new ChSphereShape);
+			msphere2->GetSphereGeometry().rad = sphrad*5; // test****
+			msphere2->GetSphereGeometry().center = ChVector<>(0.005,0,0);
+			mrigidBody->AddAsset(msphere2);
+			*/
 
 			// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
 			ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
@@ -409,7 +428,6 @@ void create_debris(double dt, double particles_second,
 			if (rand_mat < plastic_fract)
 			{
 				created_electrical_asset->conductivity = 0;
-				created_electrical_asset->densityPlastic = 900; 
                 created_electrical_asset->material_type = ElectricParticleProperty::e_mat_plastic;
 
 				// Attach a 'pink' texture to easily recognize plastic stuff in 3d view
@@ -417,18 +435,30 @@ void create_debris(double dt, double particles_second,
 				mtexture->SetTextureFilename("../objects/pinkwhite.png");
 				created_body->AddAsset(mtexture);
 
+				// Multiply the default mass & intertia tensor by density (previously assumed =1)
+				created_body->SetMass( created_body->GetMass() * ::densityPlastic);
+				created_body->SetInertiaXX( created_body->GetInertiaXX() * ::densityPlastic);
 			}
 			if (rand_mat > plastic_fract)
 			{
 				created_electrical_asset->conductivity = 6670000;
-				created_electrical_asset->densityPlastic = 1820;
 				created_electrical_asset->material_type = ElectricParticleProperty::e_mat_metal;
 
 				// Attach a 'blue' texture to easily recognize metal stuff in 3d view
 				ChSharedPtr<ChTexture> mtexture(new ChTexture);
 				mtexture->SetTextureFilename("../objects/bluwhite.png");
 				created_body->AddAsset(mtexture);
+
+				// Multiply the default mass & intertia tensor by density (previously assumed =1)
+				created_body->SetMass( created_body->GetMass() * ::densityMetal);
+				created_body->SetInertiaXX( created_body->GetInertiaXX() * ::densityMetal);
 			}
+
+
+			if (created_electrical_asset->fraction == ElectricParticleProperty::e_fraction_sphere)
+			{
+			}
+
 		}
 
 		//
@@ -585,13 +615,13 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			// calculate the position of body COG with respect to the drum COG:
 			ChVector<> mrelpos = drum_csys.TrasformParentToLocal(abody->GetPos());
 			double distx=mrelpos.x;
-			double disty=-mrelpos.z;
+			double disty=mrelpos.y;
 			ChVector<> velocity=abody->GetPos_dt();
 			double velocityx=velocity.x;
 			double velocityy=velocity.y;
 			double velocityz=velocity.z;
-			ChVector <> rot_speed=abody->GetWvel_par();
-			double rot_speedz=rot_speed.z; //bisogna tirare fuori la componente attorno all'asse z globale della velocità di rotazione
+			//ChVector <> rot_speed=abody->GetWvel_par();
+			//double rot_speedz=rot_speed.z; //bisogna tirare fuori la componente attorno all'asse z globale della velocità di rotazione
 
 			double velocity_norm_sq=velocity.Length2();
 
@@ -614,10 +644,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			double average_rad = 0.5* electricproperties->Cdim.Length(); // Approximate to sphere radius. Ida: this can be improved, by having Stokes forces for three Cdim x y z values maybe 
 
 			ChVector<> StokesForce;
-			StokesForce.x = -6*CH_C_PI*eta*average_rad*velocityx;
-			StokesForce.y = -6*CH_C_PI*eta*average_rad*velocityy; 
-			StokesForce.z = 0;	
-			
+			StokesForce = (-6*CH_C_PI*eta*average_rad) * velocity;
 	
 			abody->Accumulate_force(StokesForce, abody->GetPos(), false);
 
@@ -629,119 +656,13 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			const double xuno=distx*cos(alpha)+ disty*sin(alpha);//analytical parameter****ida
             const double yuno=disty*cos(alpha)- distx*sin(alpha);//analytical parameter****ida
 
-			double  __cdecl Ex=(((j-h1+xuno)/(pow((j-h1+xuno),2)+pow(yuno,2))+((j+h1-xuno)/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field x direction***ida
-			double  __cdecl Ey=((yuno/(pow((j-h1+xuno),2)+pow(yuno,2))-(yuno/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field y direction***ida
-			double  __cdecl E=sqrt(pow(Ex,2)+pow(Ey,2));
+			double Ex=(((j-h1+xuno)/(pow((j-h1+xuno),2)+pow(yuno,2))+((j+h1-xuno)/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field x direction***ida
+			double Ey=((yuno/(pow((j-h1+xuno),2)+pow(yuno,2))-(yuno/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field y direction***ida
+			double Ez=0;
 
-			
-			//Ex=0;
-			//Ey=0;
+			ChVector<> vE (Ex, Ey, Ez);
+			double E = vE.Length();
 
-
-			//double B = intensity*pow((drumdiameter/2/distance),numberofpoles+1);
-			//double shape = abody->GetCollisionModel()->GetShapeType();
-			//ChMatrix33<> RotM = *abody->GetA();
-			//ChVector<> yG = RotM.Matr_x_Vect(VECT_Y);
-			//ChVector<> particleRspeed = abody->GetWvel_par();
-			//ChVector<> particleRspeed_loc = abody->GetWvel_loc();
-			//int a=0;
-			//int b=abody->GetIdentifier();
-			//double rho = acos(yG.y/yG.Length());
-			
-			
-
-			//if (rho > CH_C_PI_2)
-			//{
-				//rho = CH_C_PI-rho;
-			//}
-			//double alpha = rho/CH_C_PI_2;
-
-			// check velocità rotazione particelle
-		
-			//double constR;
-			//double constI;
-			//double constTorque;
-			//double Volume,d;
-
-			
-			//if (shape == 0) //sphere
-			//{
-				//d=diam.x;
-				//double csi = mu0*d*d* sigma *(drumspeed*numberofpoles+particleRspeed.z);
-				//constR = 21*pow(csi,2)/(20*(1764+pow(csi,2)));
-				//constI = 21*42*csi/(20*(1764+pow(csi,2)));
-				//constTorque = 1/40*pow(diam.x,2)*(4/3*CH_C_PI*pow(diam.x/2,3))* sigma*(drumspeed*numberofpoles+particleRspeed.z);
-				//Volume = 1.3333*CH_C_PI*pow(diam.x/2,3);
-				//constTorque = -pow(B,2)*4/3*CH_C_PI*pow(diam.x/2,3)*constI/mu0;
-
-
-				//data_forces << csi << ",\t\t\t";
-			//}
-			//else if (shape == 2) // box (as a sphere)
-			//{
-				//d=diam.x;
-				//double csi = mu0*pow(diam.x,2)* sigma*(drumspeed*numberofpoles+particleRspeed.z);
-				//constR = 21*pow(csi,2)/20/(1764+pow(csi,2));
-				//constI = 21*42*csi/20/(1764+pow(csi,2));
-				//constTorque = 1/40*pow(diam.x,2)*(4/3*CH_C_PI*pow(diam.x/2,3))* sigma*(drumspeed*numberofpoles+particleRspeed.z);
-				//Volume = pow(diam.x,3);
-				//constTorque = -pow(B,2)*pow(diam.x,3)*constI/mu0;
-
-				//data_forces << csi << ",\t\t\t";
-			//}
-			//else if (shape == 3) // cylinder
-			//{
-				//if (diam.y<diam.x) // disk
-				//{
-					//d=diam.x; //se togliamo alpha=0, cambiarlo...
-					//double csi_par = mu0*pow(diam.y,2)* sigma*(drumspeed*numberofpoles+particleRspeed.z);
-					//double csi_per = mu0*pow(diam.x,2)* sigma*(drumspeed*numberofpoles+particleRspeed.z);
-					//double den = 4*(256+pow(0.6*CH_C_PI*diam.y*csi_per/diam.x,2));
-					//constR = alpha*0.6*CH_C_PI*diam.y*pow(csi_per,2)/diam.x/den+(1-alpha)*pow(csi_par,2)/(144+pow(csi_par,2));
-					//constI = alpha*16*csi_per/den+(1-alpha)*12*csi_par/(144+pow(csi_par,2));
-					//constTorque = (alpha*1/64*(diam.x,2)+(1-alpha)*1/12*(diam.y,2))* sigma*(drumspeed*numberofpoles+particleRspeed.z)* (CH_C_PI*pow(diam.x/2,2)*diam.y);
-					//Volume = CH_C_PI*pow(diam.x/2,2)*diam.y;
-					//constTorque = -pow(B,2)*CH_C_PI*pow(diam.x/2,2)*diam.y*constI/mu0;
-					//data_forces << csi_par << ",\t";
-					//data_forces << csi_per << ",\t";
-				//}
-				//else // cylinder
-				//{	
-					//d=diam.x;
-					//double csi = mu0*pow(diam.x,2)* sigma*(drumspeed*numberofpoles+particleRspeed.z);
-					//constR = alpha*9*pow(csi,2)/(8*(576+pow(csi,2)))+(1-alpha)*3*pow(csi,2)/(2*(576+pow(csi,2)));
-					//constI = alpha*9*24*csi/(8*(576+pow(csi,2)))+(1-alpha)*3*24*csi/(2*(576+pow(csi,2)));
-					//constTorque = (alpha*3/64+(1-alpha)*1/16)*pow(diam.x,2)* sigma*(drumspeed*numberofpoles+particleRspeed.z)* (CH_C_PI*pow(diam.x/2,2)*diam.y);
-					//Volume = CH_C_PI*pow(diam.x/2,2)*diam.y;
-					//constTorque = -pow(B,2)*CH_C_PI*pow(diam.x/2,2)*diam.y*constI/mu0;
-
-					//data_forces << csi << ",\t\t\t";
-				//}
-			//}
-	//******************************************************************************************************************************************
-			//double Volume,d;
-			//double R0=(rot_speedz*2*d)/(2*pow(velocity_norm_sq,0.5));
-			//double CL=R0/(2.2*R0+0.7);
-			//double CLdisk=1.4*R0/(R0+1);
-			//double CD=pow(0.1+2*pow(CL,2),0.5);
-			//double CDdisk=pow(0.16+0.25*pow(CLdisk,2),0.5);
-			
-			//if (shape==3 && diam.y<diam.x)
-			//{
-				//CL=CLdisk;
-				//CD=CDdisk;
-			//}
-	//*****************************************************************************************************************************************
-			//ChVector<> InducedForce;
-			/*double Induced_Fr = ((numberofpoles+1)*pow(B,2)*Volume/mu0/distance)*constR;
-			double Induced_Fphi = ((numberofpoles+1)*pow(B,2)*Volume/mu0/distance)*constI;
-			double InducedF = sqrt(pow(Induced_Fr,2)+pow(Induced_Fr,2));
-			InducedForce.x = ((numberofpoles+1)*pow(B,2)*Volume/mu0/distance)*(constR*cos(phi)+constI*sin(phi));
-			InducedForce.y = ((numberofpoles+1)*pow(B,2)*Volume/mu0/distance)*(constR*sin(phi)-constI*cos(phi));
-			InducedForce.z = 0;	
-			abody->Accumulate_force(InducedForce, abody->GetPos(), false);*/
-
-			
           
 			
 		    //
@@ -750,69 +671,18 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 
 			if (electricproperties->material_type == ElectricParticleProperty::e_mat_metal)
 			{ 
-				if (distx < (drumdiameter/2)*cos(theta)) //forze agenti sulle particelle sul rotore prima del punto di distacco
+				// charge the particle? (contact w. drum)
+				if ((distx > 0.08) && (disty > 0))
 				{
-					 ChVector<> particleposX=abody->GetPos().x;
-			         ChVector<> particleposY=abody->GetPos().y;
+					electricproperties->charge = ((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E); // charge
+				}
 
-				    ChVector<> ElectricForce;
+				ChVector<> ElectricForce;
 
-					const double alpha = CH_C_PI*(1/6);
-					
-					
-					
-				    
-					if (distx < (L*cos(alpha))) //la forza elettrica è positiva 
-					{
-						ElectricForce.x = (0.832*(2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E)*Ex;
-						ElectricForce.y = (0.832*(2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E)*Ey;
-						ElectricForce.z = 0;	
+				ElectricForce = 0.832 * electricproperties->charge * vE;
 
-						abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
-					}
-					
-					if (distx > (L*cos(alpha))) //la forza elettrica è negativa lungo la direzione x
-					{
+				abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
 
-						ElectricForce.x = (0.832*((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E))*Ex;
-						ElectricForce.y = (0.832*(2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E)*Ey;
-						ElectricForce.z = 0;
-
-						abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
-					}
-				} // end if before rotor
-
-				if (distx > ((drumdiameter/2)*cos(theta)))//forze agenti sulle particelle sul rotore dopo del punto di distacco
-				{
-					
-					ChVector<> ElectricForce;
-
-					const double alpha = CH_C_PI*(1/6);
-					
-				    
-					if (distx < L*cos(alpha))
-					{
-						ElectricForce.x = (0.832*(2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E)*Ex;
-						ElectricForce.y = (0.832*(2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E)*Ey;
-						ElectricForce.z = 0;	
-
-						abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
-
-
-					}
-					
-					if (distx > (L*cos(alpha)))
-					{
-
-						ElectricForce.x = -(0.832*((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E))*Ex;
-						ElectricForce.y = (0.832*(2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E)*Ey;
-						ElectricForce.z = 0;
-
-						abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
-
-					} 
-
-				} // end if after rotor
 
 			} // end if material==metal
 
@@ -826,11 +696,23 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			if (electricproperties->material_type == ElectricParticleProperty::e_mat_plastic) //forze sulle particelle non metalliche
 			{
 				
-				if (distx > 0.08)
-				
+
+				// charge the particle? (contact w. drum)
+				if ((distx > 0.08) && (disty > 0))
 				{
-					
-					ChVector<> ElectricImageForce;
+					electricproperties->charge = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1500000*(epsilonR/(epsilonR+2)); // charge
+				}
+				// discharge the particle? (contact w. blade)
+				if ((distx < 0.02) && (disty < drumdiameter*0.5 + 0.03))
+				{
+					electricproperties->charge = 0; // charge
+				}
+
+				ChVector<> ElectricImageForce;
+
+
+				if (distx > 0.08)
+				{
 
                     // NB: per applicare questa formula mi servirebbe la carica accumulata dalle particelle plstiche**ida
 
@@ -840,25 +722,17 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 					//ElectricImageForce.y = -0.2*sin(atan2(disty,distx));
 					//ElectricImageForce.x = (((4/3*CH_C_PI*1820*pow(average_rad,3)*pow(drumspeed,2)*(0.5*drumdiameter))*cos(atan2(disty,distx))-((4/3*CH_C_PI*1820*pow(average_rad,3)*9.81)*cos(180-(atan2(disty,distx))))*cos((atan2(disty,distx)))-(6*CH_C_PI*eta*average_rad*sqrt(pow(velocityx,2)+pow(velocityy,2))*cos(90-(atan2(disty,distx)))))/cos(atan2(disty,distx)));
 					//ElectricImageForce.y = (((4/3*CH_C_PI*1820*pow(average_rad,3)*pow(drumspeed,2)*(0.5*drumdiameter))*sin(atan2(disty,distx))-((4/3*CH_C_PI*1820*pow(average_rad,3)*9.81)*cos(180-(atan2(disty,distx))))*sin((atan2(disty,distx)))+(6*CH_C_PI*eta*average_rad*sqrt(pow(velocityx,2)+pow(velocityy,2))*sin(90-(atan2(disty,distx)))))/sin(atan2(disty,distx)));
-					ElectricImageForce.x = -((pow(3*CH_C_PI*epsilonO*pow(2*average_rad,2)*150000000*(epsilonR/(epsilonR+2)),2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
-					ElectricImageForce.y = -((pow(3*CH_C_PI*epsilonO*pow(2*average_rad,2)*150000000*(epsilonR/(epsilonR+2)),2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
+					ElectricImageForce.x = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
+					ElectricImageForce.y = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
 				  	ElectricImageForce.z = 0;	
-
-					// perchè devo applicare un valore del campo sul rotore 2 ordini di grandezza in più per fare stare 
-					// attaccate le particelle plastiche?????????????????????????
-
-					abody->Accumulate_force(ElectricImageForce, abody->GetPos(), false);
-				
 						
 				} // end if before rotor
-
-					
-				if (distx < 0.08) //forze agenti sulle particelle sul rotore dopo del punto di distacco
-				{
 				
-					
 
-				} // end if after rotor
+//ElectricImageForce *= 800;//***TEST***
+
+				abody->Accumulate_force(ElectricImageForce, abody->GetPos(), false);
+				
 
 			   }  // end if material==plastic
 			
@@ -1008,6 +882,47 @@ void fall_point (	ChIrrAppInterface& application,
 	}
 }
 
+
+void draw_forces(ChIrrApp& application, double scalefactor = 1.0)
+{
+	ChSystem* msystem = application.GetSystem();
+
+	for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
+	{
+		ChBody* abody = (*msystem->Get_bodylist())[i];
+
+		bool was_a_particle = false;
+		ChSharedPtr<ElectricParticleProperty> electricproperties; // null by default
+
+		// Fetch the ElectricParticleProperty asset from the list of 
+		// assets that have been attached to the object, and retrieve the
+		// custom data that have been stored. ***ALEX
+		for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
+		{
+			ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
+			if (myasset.IsType<ElectricParticleProperty>())
+			{
+				// OK! THIS WAS A PARTICLE! ***ALEX
+				was_a_particle = true;		
+				electricproperties = myasset;
+			} 
+		}
+
+		// Do the computation of forces only on bodies that had 
+		// the 'ElectricParticleProperty' attached.. **ALEX
+		if(was_a_particle)
+		{
+			ChVector<> custom_force = abody->Get_accumulated_force();
+			custom_force *= scalefactor;
+			ChIrrTools::drawSegment(application.GetVideoDriver(), 
+				abody->GetPos(), 
+				abody->GetPos() + custom_force,
+				video::SColor(255,   0,0,255));
+		}
+	}
+}
+
+
 //void fall_point (	ChIrrAppInterface& application,
 //					ISceneNode* parent,
 //					ChSystem* msystem,		// contains all bodies
@@ -1058,7 +973,7 @@ int main(int argc, char* argv[])
 	application.AddTypicalLogo("../objects/");
 	application.AddTypicalSky("../objects/skybox/");
 	application.AddTypicalLights();
-	application.AddTypicalCamera(core::vector3df(1.5f,0.4f,-1.0f), core::vector3df(0.f,0.f,0.f));
+	application.AddTypicalCamera(core::vector3df(1.5f,0.4f,-1.0f), core::vector3df(0.5f,0.f,0.f));
 	application.AddLightWithShadow(vector3df(-4.5,5.5,4.5), vector3df(0,0,0), 10, 1.2,10.2, 30,512, video::SColorf(1,0.9,0.9));
 
 	// This is for GUI tweaking of system parameters..
@@ -1281,9 +1196,10 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 */
 
-
+	//
 	// Create the conveyor belt (this is a pure Chrono::Engine object, 
 	// because an Irrlicht 'SceneNode' wrapper is not yet available, so it is invisible - no 3D preview)
+	//
 
 	
 	ChSharedPtr<ChConveyor> mconveyor (new ChConveyor(conveyor_length, conv_thick, conveyor_width));
@@ -1297,23 +1213,80 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
     mconveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
 	mconveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
 
-	double drumradius = 0.114;
-	ChBodySceneNode* mDrum = (ChBodySceneNode*)addChBodySceneNode_easyCylinder(
-												application.GetSystem(), application.GetSceneManager(),
-												1,
-												ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0),
-												ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0), 
-												ChVector<>(drumradius*2,conveyor_width,drumradius*2));
 
+	//
+	// Create a collision shape for the rotating drum (end of the belt)
+	//
+
+	double drummass = 100;
+	double Ixx = 25;
+	double drumradius = 0.114; 
+	ChSharedPtr<ChBody> mrigidBodyDrum(new ChBody);
+
+	mrigidBodyDrum->SetPos(ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0));
+	mrigidBodyDrum->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
+	mrigidBodyDrum->SetMass(drummass);
+	mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
+	mrigidBodyDrum->SetFriction(0.9f); 
+	mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
+	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
+	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+
+	// Define a collision shape 
+	mrigidBodyDrum->GetCollisionModel()->ClearModel();
+	mrigidBodyDrum->GetCollisionModel()->AddCylinder(drumradius,drumradius,conveyor_width);
+	mrigidBodyDrum->GetCollisionModel()->BuildModel();
+	mrigidBodyDrum->SetCollide(true);
+
+	// Attach a visualization shape asset. 
+	ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
+	mcyl->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
+	mcyl->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
+	mrigidBodyDrum->AddAsset(mcyl);
 	
-	mDrum->GetBody()->SetBodyFixed(true);
-	mDrum->GetBody()->SetFriction(0.01);
-	mDrum->GetBody()->GetCollisionModel()->SetFamily(3);
-    mDrum->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
-	mDrum->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-	
-	
-	
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mrigidBodyDrum);
+
+	// Optional: attach a 'blue' texture to easily recognize metal stuff in 3d view
+	ChSharedPtr<ChTexture> mtexturedrum(new ChTexture);
+	mtexturedrum->SetTextureFilename("../objects/bluwhite.png");
+	mrigidBodyDrum->AddAsset(mtexturedrum);
+
+	// For enabling visualization in Irrlicht
+	application.AssetBind(mrigidBodyDrum);
+	application.AssetUpdate(mrigidBodyDrum);
+
+
+	//
+	// Create a truss (absolute fixed reference body, for connecting the rotating cyl.)
+	//
+
+	ChSharedPtr<ChBody> mtruss(new ChBody);
+	mtruss->SetBodyFixed(true);
+
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mtruss);
+
+
+
+	// 
+	// Create a motor constraint between the cylinder and the truss
+	//
+
+	ChCoordsys<> drum_axis_coordsys(ChCoordsys<>(ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0)));
+
+	ChSharedPtr<ChLinkEngine> mengine(new ChLinkEngine);
+	mengine->Initialize(mrigidBodyDrum, mtruss, drum_axis_coordsys);
+
+	mengine->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
+	if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
+		mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mengine);
+
+
+
 	// IDA: the drum above is fixed, but for more realistic collision with particles that might fall on the rounded 
 	// edge of the conveyor, it should be a rotating cylinder, whose surface speed is the same speed of conveyor flat 
 	// surface, to reproduce the effect of the rubber belt that flows wrapped to the pulley cylinder.
@@ -1379,12 +1352,12 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 		application.DoStep();
 
-		mDrum->GetBody()->GetFrame_REF_to_abs().GetCoord(); // UNUSEFUL OPERATION? **ALEX
+		//mDrum->GetBody()->GetFrame_REF_to_abs().GetCoord(); // UNUSEFUL OPERATION? **ALEX
 
 		totframes++;
 
 		apply_forces (	&mphysicalSystem,		// contains all bodies
-						mDrum->GetBody()->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
+						drum_axis_coordsys, // pos and rotation of axis of drum (not rotating reference!)
 						drumspeed,		 // speed of drum
 						numberofpoles,	 // number of couples of poles
 						intensity,		 // intensity of the magnetic field
@@ -1397,15 +1370,15 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 						alpha,
 					    U,
 						f,
-					
-						
-
 						totframes);
 
 		fall_point (	application,
 						&mphysicalSystem,		// contains all bodies
-						mDrum->GetBody()->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
+						mrigidBodyDrum->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
 						threshold);
+
+		if (receiver.checkbox_plotforces->isChecked())
+			draw_forces ( application , 10000);
 
 		//fall_point (	application,
 		//				parent,
@@ -1424,6 +1397,10 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 			// Maybe the user played with the slider and changed STATIC_speed...
 		 	mconveyor->SetConveyorSpeed(STATIC_speed);
+			// ..also for rotating drum:
+			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
+				mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+
 			
 
 			//***ALEX esempio salvataggio su file...
