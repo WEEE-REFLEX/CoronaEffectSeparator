@@ -42,7 +42,7 @@ INCLUDE_DIRECTORIES(  ${CHRONOENGINE_INCLUDES}  )
 #--------------------------------------------------------------
 #         Set c++ sources for building the exe, as usual in CMake
 
-ADD_EXECUTABLE(conveyor     source/conveyor.cpp)
+ADD_EXECUTABLE(conveyor     source/conveyor_Ida.cpp)
 
 
 
