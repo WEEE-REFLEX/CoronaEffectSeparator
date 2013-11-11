@@ -152,6 +152,21 @@ public:
 };
 
 
+// This can be added to store the trajectory on a per-particle basis.
+
+class ParticleTrajectory : public ChAsset
+{
+public:
+	std::list< ChVector<> > positions;
+	std::list< ChVector<> > speeds;
+	unsigned int max_points;
+
+	ParticleTrajectory() 
+	{
+		max_points = 80;
+	}
+};
+
 
 
 // Define a MyEventReceiver class which will be used to manage input
@@ -168,23 +183,27 @@ public:
 
 				// ..add a GUI slider to control particles flow
 				scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
-								true, rect<s32>(510, 85, 650, 100), 0, 101);
+								true, rect<s32>(560, 15, 700, 15+20), 0, 101);
 				scrollbar_flow->setMax(300); 
 				scrollbar_flow->setPos(150);
 				text_flow = application->GetIGUIEnvironment()->addStaticText(
-							L"Flow [particles/s]", rect<s32>(650,85,750,100), false);
+							L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
 
 				// ..add GUI slider to control the speed
 				scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(
-								true, rect<s32>(510, 125, 650, 140), 0, 102);
+								true, rect<s32>(560, 40, 700, 40+20), 0, 102);
 				scrollbar_speed->setMax(100); 
 				scrollbar_speed->setPos(100);
 				text_speed = application->GetIGUIEnvironment()->addStaticText(
-								L"Conveyor speed [m/s]:", rect<s32>(650,125,750,140), false);
+								L"Conveyor speed [m/s]:", rect<s32>(710,40,800,40+20), false);
 
 				// ..add GUI checkmark to enable plotting forces
-				checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(510,165, 510+150,165+20),
+				checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,55+20),
 								0, 105, L"Plot applied CES forces");
+
+				// ..add GUI checkmark to enable plotting forces
+				checkbox_plottrajectories = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,90, 560+150,90+20),
+								0, 106, L"Plot trajectories");
 				
 
 			}
@@ -228,6 +247,7 @@ public:
 	IGUIScrollBar*  scrollbar_speed;
 	IGUIStaticText* text_speed;
 	IGUICheckBox*	checkbox_plotforces;
+	IGUICheckBox*	checkbox_plottrajectories;
 };
 
 
@@ -281,8 +301,8 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
 			mrigidBody->SetImpactC(0.5f); 
-			mrigidBody->SetRollingFriction(0.1);
-			mrigidBody->SetSpinningFriction(0.1);
+			// mrigidBody->SetRollingFriction(0.1);
+			// mrigidBody->SetSpinningFriction(0.1);
 			//mrigidBody->GetCollisionModel()->SetFamily(5);
 			//mrigidBody->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
 
@@ -496,6 +516,16 @@ void create_debris(double dt, double particles_second,
 			irr_application->AssetUpdate(created_body);
 		}
 
+
+		// 
+		// 5 ---- it could be useful to attach an asset for storing the trajectory of particle
+		//
+
+		if (!created_body.IsNull())
+		{
+			ChSharedPtr<ParticleTrajectory> massettraj(new ParticleTrajectory);
+			created_body->AddAsset(massettraj);
+		}
 
 
 	}
@@ -711,7 +741,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				ChVector<> ElectricImageForce;
 
 
-               // NB: per applicare questa formula mi servirebbe la carica accumulata dalle particelle plstiche**ida
+                // NB: per applicare questa formula mi servirebbe la carica accumulata dalle particelle plstiche**ida
 
 				ElectricImageForce.x = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
 				ElectricImageForce.y = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
@@ -907,6 +937,90 @@ void draw_forces(ChIrrApp& application, double scalefactor = 1.0)
 				abody->GetPos(), 
 				abody->GetPos() + custom_force,
 				video::SColor(255,   0,0,255));
+		}
+	}
+}
+
+
+void UpdateTrajectories(ChIrrApp& application)
+{
+	ChSystem* msystem = application.GetSystem();
+
+	for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
+	{
+		ChBody* abody = (*msystem->Get_bodylist())[i];
+
+		bool was_a_particle = false;
+		ChSharedPtr<ParticleTrajectory> trajectoryasset; // null by default
+
+		// Fetch the ElectricParticleProperty asset from the list of 
+		// assets that have been attached to the object, and retrieve the
+		// custom data that have been stored. ***ALEX
+		for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
+		{
+			ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
+			if (myasset.IsType<ParticleTrajectory>())
+			{
+				// OK! trajectory storage!	
+				trajectoryasset = myasset;
+				trajectoryasset->positions.push_back( abody->GetPos() );
+				trajectoryasset->speeds.push_back( abody->GetPos_dt() );
+				
+				// remove excessive amount of elements
+				while (trajectoryasset->positions.size() > trajectoryasset->max_points )
+					trajectoryasset->positions.pop_front();
+				while (trajectoryasset->speeds.size() > trajectoryasset->max_points )
+					trajectoryasset->speeds.pop_front();
+			} 
+		}
+	}
+}
+
+void DrawTrajectories(ChIrrApp& application)
+{
+	ChSystem* msystem = application.GetSystem();
+
+	for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
+	{
+		ChBody* abody = (*msystem->Get_bodylist())[i];
+
+		ChVector<> pointA = abody->GetPos();
+
+		bool was_a_particle = false;
+		ChSharedPtr<ParticleTrajectory> trajectoryasset; // null by default
+
+		// Fetch the ElectricParticleProperty asset from the list of 
+		// assets that have been attached to the object, and retrieve the
+		// custom data that have been stored. ***ALEX
+		for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
+		{
+			ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
+			if (myasset.IsType<ParticleTrajectory>())
+			{
+				trajectoryasset = myasset;
+				int npoints = 0;
+				std::list< ChVector<> >::const_iterator iterator;
+				std::list< ChVector<> >::const_iterator iteratorspeed;
+				iteratorspeed = trajectoryasset->speeds.begin();
+				for (iterator = trajectoryasset->positions.begin(); iterator != trajectoryasset->positions.end(); ++iterator)
+				{
+					ChVector<> pointB = *iterator;
+					ChVector<> speed = *iteratorspeed;
+					if (npoints >0)
+					{
+						double scalarspeed = speed.Length();
+						double normalizedspeed = scalarspeed / 5.0;
+						video::SColor mcol (255, (int)(255.*normalizedspeed), (int)(255.*normalizedspeed), (int)(255.*(1.0-normalizedspeed)) );
+						ChIrrTools::drawSegment(application.GetVideoDriver(), 
+								pointA, 
+								pointB,
+								mcol);
+					}
+					pointA = pointB;
+					++npoints;
+					++iteratorspeed;
+				}
+			} 
 		}
 	}
 }
@@ -1368,7 +1482,10 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 						threshold);
 
 		if (receiver.checkbox_plotforces->isChecked())
-			draw_forces ( application , 10000);
+			draw_forces ( application , 1000);
+
+		if (receiver.checkbox_plottrajectories->isChecked())
+			DrawTrajectories(application);
 
 		//fall_point (	application,
 		//				parent,
@@ -1391,7 +1508,10 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
 				mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
 
-			
+			// update the assets containing the trajectories, if any
+			if (receiver.checkbox_plottrajectories->isChecked())
+				if (totframes % 20 == 0)
+					UpdateTrajectories(application);
 
 			//***ALEX esempio salvataggio su file...
 			stepnum++;
