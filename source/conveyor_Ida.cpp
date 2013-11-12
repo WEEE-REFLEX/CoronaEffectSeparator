@@ -48,8 +48,8 @@ double STATIC_flow = 1;
 double STATIC_speed = 0.87; //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
-const double epsilon = 0.00000000000885941; // dielectric constant [F/m] *****ida e
-const double epsilonO = 0.000000000008854187; //vacuum permittività
+const double epsilon = 0.00000000000885941; // dielectric constant [F/m] *****ida 
+const double epsilonO = 0.000000000008854187; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
 const double drumspeed = 6.28; //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
@@ -59,8 +59,7 @@ const double drumdiameter = 0.228;
 const double electrodediameter = 0.038;
 const double U = 25000; // supplied high-voltage [v]
 const double L = 0.21; //certer distance of rotating roll electrode and electrostatic pole *****ida
-const double alpha = CH_C_PI*(1/6); //angle of horizontal line and electrodes center line *****ida
-const double theta = CH_C_PI*(1/4); //angle at detachment point *****ida
+const double alpha = (CH_C_PI/180)*30; //angle of horizontal line and electrodes center line *****ida
 const double h1 = (pow(L,2)+pow((drumdiameter/2),2)-((electrodediameter/2),2))/(2*L); //analytical parameter****ida
 const double h2 = (pow(L,2)-pow((drumdiameter/2),2)+((electrodediameter/2),2))/(2*L);//analytical parameter****ida
 const double j = sqrt(pow(h1,2)-pow((drumdiameter/2),2));//analytical parameter****ida
@@ -1391,26 +1390,28 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 
 
-	// IDA: the drum above is fixed, but for more realistic collision with particles that might fall on the rounded 
-	// edge of the conveyor, it should be a rotating cylinder, whose surface speed is the same speed of conveyor flat 
-	// surface, to reproduce the effect of the rubber belt that flows wrapped to the pulley cylinder.
-	// This can be done by unfixing it and by constraining it to the truss via a ChLinkEngine. **ALEX
 
-
-	// electrode 
+	// Electrode 
 
 	double elecradius = 0.019; //***************ida
+
 	ChBodySceneNode* mElec = (ChBodySceneNode*)addChBodySceneNode_easyCylinder(
 		                                         application.GetSystem(), application.GetSceneManager(),
 												1,
-												ChVector<>(conveyor_length+sin(alpha)*L,cos(alpha)*L,0),
+												ChVector<>(4*(drumradius+(L*cos(alpha)-drumradius)),drumradius+(sin(alpha)*L-drumradius),0),
 												ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0), 
 												ChVector<>(elecradius*2,conveyor_width,elecradius*2));
 	mElec->GetBody()->SetBodyFixed(true);
+    mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
+	mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+	mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
 
-	// brush
 
-	/*double brushradius = 0.02; //***************ida
+	/*// Brush
+
+
+
+	double brushradius = 0.02; //***************ida
 	ChBodySceneNode* mBrush = (ChBodySceneNode*)addChBodySceneNode_easyCylinder(
 		                                         application.GetSystem(), application.GetSceneManager(),
 												1,
@@ -1422,6 +1423,81 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	mBrush->GetBody()->GetCollisionModel()->SetFamily(3);
     mBrush->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
 	mBrush->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);*/
+
+	//********************************************************************** ida
+	// Create a collision shape for the rotating brush 
+	//
+
+	double brushmass = 25;
+	double Ixx2 = 12.5;
+	double brushradius = 0.02; 
+	ChSharedPtr<ChBody> mrigidBodyBrush(new ChBody);
+
+	mrigidBodyBrush->SetPos(ChVector<>(conveyor_length/2-drumradius-brushradius, -drumradius-brushradius-conv_thick/2,0));//***************************************************
+	mrigidBodyBrush->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
+	mrigidBodyBrush->SetMass(brushmass);
+	mrigidBodyBrush->SetInertiaXX(ChVector<>(Ixx2,Ixx2,Ixx2));
+	mrigidBodyBrush->SetFriction(0.9f); 
+	mrigidBodyBrush->GetCollisionModel()->SetFamily(4); //3
+	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
+	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
+
+	// Define a collision shape 
+	mrigidBodyBrush->GetCollisionModel()->ClearModel();
+	mrigidBodyBrush->GetCollisionModel()->AddCylinder(brushradius,brushradius,conveyor_width);
+	mrigidBodyBrush->GetCollisionModel()->BuildModel();
+	mrigidBodyBrush->SetCollide(true);
+
+	// Attach a visualization shape asset. 
+	ChSharedPtr<ChCylinderShape> mcyl2(new ChCylinderShape);
+	mcyl2->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
+	mcyl2->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
+	mcyl2->GetCylinderGeometry().rad = brushradius;
+	mrigidBodyBrush->AddAsset(mcyl2);
+	
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mrigidBodyBrush);
+
+	// Optional: attach a 'pink' texture to easily recognize metal stuff in 3d view
+	ChSharedPtr<ChTexture> mtexturebrush(new ChTexture);
+	mtexturebrush->SetTextureFilename("../objects/pinkwhite.png");
+	mrigidBodyBrush->AddAsset(mtexturebrush);
+
+	// For enabling visualization in Irrlicht
+	application.AssetBind(mrigidBodyBrush);
+	application.AssetUpdate(mrigidBodyBrush);
+
+
+	//
+	// Create a truss (absolute fixed reference body, for connecting the rotating cyl.)
+	//
+
+	ChSharedPtr<ChBody> mtruss2(new ChBody);
+	mtruss2->SetBodyFixed(true);
+
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mtruss2);
+
+
+
+	// 
+	// Create a motor constraint between the cylinder and the truss
+	//
+
+	ChCoordsys<> drum_axis_coordsys2(ChCoordsys<>(ChVector<>(conveyor_length/2-drumradius-brushradius, -drumradius-brushradius-conv_thick/2,0))); //****************************
+
+	ChSharedPtr<ChLinkEngine> mengine2(new ChLinkEngine);
+	mengine2->Initialize(mrigidBodyBrush, mtruss2, drum_axis_coordsys2);
+
+	mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
+	if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine2->Get_spe_funct()))
+		mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mengine2); //*************************************************************************************************
+
+
 	
 
 
