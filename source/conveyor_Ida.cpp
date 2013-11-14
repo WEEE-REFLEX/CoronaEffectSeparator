@@ -103,7 +103,7 @@ const double densityPlastic = 900;
 
 // set as true for saving log files each n frames
 bool savefile = false;
-int saveEachNframes = 10;
+int saveEachNframes = 50;
 
 int totframes = 0;
 	
@@ -740,7 +740,6 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				ChVector<> ElectricImageForce;
 
 
-                // NB: per applicare questa formula mi servirebbe la carica accumulata dalle particelle plstiche**ida
 
 				ElectricImageForce.x = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
 				ElectricImageForce.y = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
@@ -1231,7 +1230,7 @@ if (n == 4)
 
 ChBodySceneNode* mfence12 = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 						&mphysicalSystem, application.GetSceneManager(),1.0,
-						ChVector<>(xnozzle-xnozzlesize/2-fence_width/2-2*drumdiameter,ynozzlesize/2+ynozzle+binbase,0),
+						ChVector<>(xnozzle-xnozzlesize/2-fence_width/2,ynozzlesize/2+ynozzle+binbase,0),
 						ChQuaternion<>(0,0,1,0), 
 						ChVector<>(fence_width,ynozzlesize,znozzlesize+2*fence_width) );
 	mfence12->GetBody()->SetBodyFixed(true);
@@ -1308,6 +1307,7 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	ChSharedPtr<ChConveyor> mconveyor (new ChConveyor(conveyor_length, conv_thick, conveyor_width));
 	mconveyor->SetBodyFixed(true);
 	mconveyor->SetFriction(0.9);
+    mconveyor->SetRollingFriction(0.01);
 	mconveyor->SetConveyorSpeed(STATIC_speed);
 	mconveyor->SetPos( ChVector<>(0, 0, 0) );
 
@@ -1331,6 +1331,7 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	mrigidBodyDrum->SetMass(drummass);
 	mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
 	mrigidBodyDrum->SetFriction(0.9f); 
+	mrigidBodyDrum->SetRollingFriction(0.01);
 	mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
 	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
@@ -1422,7 +1423,8 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	mrigidBodyBrush->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
 	mrigidBodyBrush->SetMass(brushmass);
 	mrigidBodyBrush->SetInertiaXX(ChVector<>(Ixx2,Ixx2,Ixx2));
-	mrigidBodyBrush->SetFriction(0.9f); 
+	mrigidBodyBrush->SetFriction(0.9f);
+	mrigidBodyBrush->SetRollingFriction(0.01);
 	mrigidBodyBrush->GetCollisionModel()->SetFamily(3); 
 	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
@@ -1589,19 +1591,24 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 					for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 					{
 						ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
+						
 						if (myasset.IsType<ElectricParticleProperty>())
 						{
 							// ok, its a particle!
 							ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
 							double my_cond  = electricproperties->conductivity ; // ..
+							
+							
 							// Save on disk some infos...
-							file_for_output << abody->GetPos().x << ", "
+							file_for_output << abody->GetIdentifier() << ", "
+								            << abody->GetPos().x << ", "
 											<< abody->GetPos().y << ", "
 											<< abody->GetPos().z << ", "
 											<< abody->GetPos_dt().x << ", "
 											<< abody->GetPos_dt().y << ", "
 											<< abody->GetPos_dt().z << ", "
-											<< my_cond << "\n";
+					                        << my_cond << "\n";
+							               
 						}
 					}
 				}
