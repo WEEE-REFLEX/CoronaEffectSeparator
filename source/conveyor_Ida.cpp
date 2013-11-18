@@ -48,8 +48,8 @@ double STATIC_flow = 1;
 double STATIC_speed = 0.72; //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
-const double epsilon = 0.00000000000885941; // dielectric constant [F/m] *****ida 
-const double epsilonO = 0.000000000008854187; //vacuum permeability
+const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
+const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
 const double drumspeed = 6.28; //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
@@ -103,7 +103,7 @@ const double densityPlastic = 900;
 
 // set as true for saving log files each n frames
 bool savefile = false;
-int saveEachNframes = 50;
+int saveEachNframes = 20;
 
 int totframes = 0;
 	
@@ -122,7 +122,11 @@ public:
 	ChVector<> Cdim;
 	double conductivity;
 	double birthdate;
-	double charge;		//***ida + ale (coulomb, for plastic)
+	double chargeM;		//***ida + ale (coulomb, for plastic)
+	double chargeP;
+	ChVector<> ElectricForce;
+	ChVector<> StokesForce;
+	ChVector<> ElectricImageForce;
 	enum 
 	{
 		e_fraction_box,
@@ -145,7 +149,8 @@ public:
 		birthdate = 0;
 		fraction = ElectricParticleProperty::e_fraction_others;
 		material_type = ElectricParticleProperty::e_mat_other;
-		charge = 0;
+		chargeM = 0;
+		chargeP = 0;
 	}
 	
 };
@@ -672,8 +677,9 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 
 			double average_rad = 0.5* electricproperties->Cdim.Length(); // Approximate to sphere radius. Ida: this can be improved, by having Stokes forces for three Cdim x y z values maybe 
 
-			ChVector<> StokesForce;
-			StokesForce = (-6*CH_C_PI*eta*average_rad) * velocity;
+			ChVector<> StokesForce = electricproperties->StokesForce;
+			
+			electricproperties->StokesForce = (-6*CH_C_PI*eta*average_rad) * velocity;
 	
 			abody->Accumulate_force(StokesForce, abody->GetPos(), false);
 
@@ -682,8 +688,8 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 
             //Calculating the analytical expressions of the electric field***ida
 
-			const double xuno=distx*cos(alpha)+ disty*sin(alpha);//analytical parameter****ida
-            const double yuno=disty*cos(alpha)- distx*sin(alpha);//analytical parameter****ida
+			double xuno=distx*cos(alpha)+ disty*sin(alpha);//analytical parameter****ida
+            double yuno=disty*cos(alpha)- distx*sin(alpha);//analytical parameter****ida
 
 			double Ex=(((j-h1+xuno)/(pow((j-h1+xuno),2)+pow(yuno,2))+((j+h1-xuno)/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field x direction***ida
 			double Ey=((yuno/(pow((j-h1+xuno),2)+pow(yuno,2))-(yuno/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field y direction***ida
@@ -701,14 +707,16 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			if (electricproperties->material_type == ElectricParticleProperty::e_mat_metal)
 			{ 
 				// charge the particle? (contact w. drum)
-				if ((distx > 0.005) && (disty > 0))
+				if ((distx > 0.005 ) && (disty > 0))
 				{
-					electricproperties->charge = ((2/3)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E); // charge
+					electricproperties->chargeM = 0.666666666666667*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E;
+					
 				}
 
-				ChVector<> ElectricForce;
+				
+				ChVector<> ElectricForce = electricproperties->ElectricForce;
 
-				ElectricForce = 0.832 * electricproperties->charge * vE;
+				electricproperties->ElectricForce = 0.832 * electricproperties->chargeM * vE;
 
 				abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
 
@@ -729,21 +737,20 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				// charge the particle? (contact w. drum)
 				if ((distx > 0.005 ) && (disty > 0))
 				{
-					electricproperties->charge = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1500000*(epsilonR/(epsilonR+2)); // charge
+					electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1500000*(epsilonR/(epsilonR+2)); // charge
 				}
 				// discharge the particle? (contact w. blade)
 				if ((distx < -(drumdiameter*0.5 - 0.009)) && (disty < -0.009))
 				{
-					electricproperties->charge = 0; // charge
+					electricproperties->chargeP = 0; // charge
 				}
 
-				ChVector<> ElectricImageForce;
+				ChVector<> ElectricImageForce = electricproperties->ElectricImageForce;
 
 
-
-				ElectricImageForce.x = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
-				ElectricImageForce.y = -((pow( electricproperties->charge,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
-				ElectricImageForce.z = 0;	
+				electricproperties->ElectricImageForce.x = -((pow( electricproperties->chargeP,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
+				electricproperties->ElectricImageForce.y = -((pow( electricproperties->chargeP,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
+				electricproperties->ElectricImageForce.z = 0;	
 						
 				
 
@@ -1597,17 +1604,22 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 							// ok, its a particle!
 							ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
 							double my_cond  = electricproperties->conductivity ; // ..
-							
+							ChVector<> my_ElectricForce = electricproperties->ElectricForce;
+							ChVector<> my_ElectricImageForce = electricproperties->ElectricImageForce;
+							ChVector<> my_StokesForce = electricproperties->StokesForce;
 							
 							// Save on disk some infos...
 							file_for_output << abody->GetIdentifier() << ", "
 								            << abody->GetPos().x << ", "
-											<< abody->GetPos().y << ", "
-											<< abody->GetPos().z << ", "
-											<< abody->GetPos_dt().x << ", "
-											<< abody->GetPos_dt().y << ", "
-											<< abody->GetPos_dt().z << ", "
-					                        << my_cond << "\n";
+											//<< abody->GetPos().y << ", "
+											//<< abody->GetPos().z << ", "
+											//<< abody->GetPos_dt().x << ", "
+											//<< abody->GetPos_dt().y << ", "
+											//<< abody->GetPos_dt().z << ", "
+											//<< my_StokesForce << ", "
+											//<< my_ElectricImageForce << ", "
+											<< my_ElectricForce << "\n";
+					                       
 							               
 						}
 					}
