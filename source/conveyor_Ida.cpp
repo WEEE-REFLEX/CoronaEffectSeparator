@@ -44,7 +44,7 @@ using namespace std;
 // programming practice, but enough for quick tests)
 
 
-double STATIC_flow = 1; 
+double STATIC_flow = 1000; 
 double STATIC_speed = 0.72; //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
@@ -96,14 +96,14 @@ const double ynozzlesize = 0.5;
 const double ynozzle = 0.3;
 const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato avanti****ida
 
-const double densityMetal = 1820;
+const double densityMetal = 8900;//1820;
 const double densityPlastic = 900;
 
-
+int myid = 1;
 
 // set as true for saving log files each n frames
-bool savefile = false;
-int saveEachNframes = 20;
+bool savefile = true;
+int saveEachNframes = 10;
 
 int totframes = 0;
 	
@@ -156,6 +156,9 @@ public:
 };
 
 
+
+
+
 // This can be added to store the trajectory on a per-particle basis.
 
 class ParticleTrajectory : public ChAsset
@@ -170,6 +173,118 @@ public:
 		max_points = 80;
 	}
 };
+
+
+
+/// Class that can be used to generate sample numbers according to a 
+/// probability distribution. Probability distribution is defined with x,y points,
+/// at least a dozen of pairs to be more precise in the reconstruction of probability.
+
+class ChRandomDistribution
+{
+public:
+
+		/// Create an object that can be used to generate sample numbers according to a 
+		/// probability distribution. The probability distribution is a curve represented
+		/// by simplified x,y pairs of points. The integral of the probability curve
+		/// must be unit, i.e normalized (but if not, a normalization will be enforced)
+		/// Note: too few points means approximate results, but too many points might give a 
+		/// small performance overhead when calling GetRandom().
+	ChRandomDistribution (ChMatrix<>& mx, ChMatrix<>& my)
+	{
+	
+		if (mx.GetRows() != my.GetRows())
+			throw ChException("Probability curve must have same number of rows in abscysse and ordinates");
+		if ((mx.GetColumns() != 1) || (my.GetColumns() != 1))
+			throw ChException("Probability curve must have column-vectors as input");
+
+		x = new ChMatrixDynamic<>;
+		y = new ChMatrixDynamic<>;
+		cdf_x = new ChMatrixDynamic<>;
+		cdf_y = new ChMatrixDynamic<>;
+
+		*x = mx;
+		*y = my;
+
+		*cdf_x = mx;
+		*cdf_y = my;
+
+			// compute CDF
+		double integral = 0;
+		for (int i = 0; i< x->GetRows()-1; i++)
+		{
+			integral += 0.5*( (*y)(i) + (*y)(i+1) ) * ( (*x)(i+1) - (*x)(i) );
+			(*cdf_y)(i) = integral;
+			(*cdf_x)(i) = 0.5* ( (*x)(i+1) + (*x)(i) );
+		}
+			// normalize if P(x) had not unit integral
+		double totintegral = (*cdf_y)(x->GetRows()-2);
+		if (totintegral != 1.0)
+		{
+			for (int i = 0; i< x->GetRows()-1; i++)
+			{
+				(*cdf_y)(i) *= 1./totintegral;
+			}
+		}
+		(*cdf_x)(x->GetRows()-1) = (*x)(x->GetRows()-1);
+		(*cdf_y)(x->GetRows()-1) = 1.0;
+		
+	}
+
+	~ChRandomDistribution()
+	{
+		delete x;
+		delete y;
+		delete cdf_x;
+		delete cdf_y;
+	}
+
+		/// Compute a random value whose probability is the probability curve that has 
+		/// been entered with x,y points during the creation of this object.
+	double GetRandom()
+	{
+		double mx1 =  (*x)(0);
+		double mx2 =  (*cdf_x)(0);
+		double my1 =  0;
+		double my2 =  (*cdf_y)(0);
+
+		double rand = ChRandom();
+		for (int i = 0; i< x->GetRows()-1; i++)
+		{
+			if (( rand <= (*cdf_y)(i+1) ) &&
+				( rand >  (*cdf_y)(i)   ) )
+			{
+				mx1 = (*cdf_x)(i);
+				mx2 = (*cdf_x)(i+1);
+				my1 = (*cdf_y)(i);
+				my2 = (*cdf_y)(i+1);
+				break;
+			}
+		}
+		// linear interp
+		double val = mx1 +  ((rand - my1)/(my2-my1)) * (mx2-mx1);
+		return val;
+	}
+
+	ChMatrix<>* GetProbabilityXpoints() {return x;}
+	ChMatrix<>* GetProbabilityYpoints() {return y;}
+	ChMatrix<>* GetProbabilityCDFcumulativeX() {return cdf_x;}
+	ChMatrix<>* GetProbabilityCDFcumulativeY() {return cdf_y;}
+
+private:
+	ChMatrix<>* x;
+	ChMatrix<>* y;
+
+	ChMatrix<>* cdf_x;
+	ChMatrix<>* cdf_y;
+};
+
+
+
+
+
+
+
 
 
 
@@ -268,7 +383,7 @@ void create_debris(double dt, double particles_second,
 	double box_fraction = 0;//0.4; // 40% cylinders
 	double cyl_fraction = 1-box_fraction-sph_fraction;
 
-	double sphrad = 0.0009;
+	double sphrad = 0.6e-3 + (ChRandom()-0.5)*(0.6e-3);
 	double cylhei = 0.035;
 	double cylrad = sphrad;
 	double cylmass = CH_C_PI*pow(cylrad,2)*cylhei* 1.0;  // now with default 1.0 density
@@ -305,6 +420,8 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
 			mrigidBody->SetImpactC(0.5f); 
+			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
+			       
 			// mrigidBody->SetRollingFriction(0.1);
 			// mrigidBody->SetSpinningFriction(0.1);
 			//mrigidBody->GetCollisionModel()->SetFamily(5);
@@ -707,7 +824,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			if (electricproperties->material_type == ElectricParticleProperty::e_mat_metal)
 			{ 
 				// charge the particle? (contact w. drum)
-				if ((distx > 0.005 ) && (disty > 0))
+				if ((distx > 0) && (disty > 0))
 				{
 					electricproperties->chargeM = 0.666666666666667*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E;
 					
@@ -735,7 +852,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				
 
 				// charge the particle? (contact w. drum)
-				if ((distx > 0.005 ) && (disty > 0))
+				if ((distx > 0) && (disty > 0))
 				{
 					electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1500000*(epsilonR/(epsilonR+2)); // charge
 				}
@@ -852,7 +969,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
  
 // Control on the fall point
 
-void fall_point (	ChIrrAppInterface& application,
+ void fall_point (	ChIrrAppInterface& application,
 					ChSystem* msystem,		// contains all bodies
 					ChCoordsys<>& drum_csys, // pos and rotation of drum
 					double y_threshold)		
@@ -882,9 +999,9 @@ void fall_point (	ChIrrAppInterface& application,
 		double sphmass=abody->GetMass();
 		double posy=-mrelpos.z; // vertical position of the particle with respect to the drum COG
 		double posx=mrelpos.x;
-		int a=0;
-		int b=abody->GetIdentifier();
-			if (posy <= y_threshold+bin_height && posy >= y_threshold && posx>0 && posx<bin_length && b!=0)
+		//int a=0;
+		//int b=abody->GetIdentifier();
+			//if (posy <= y_threshold+bin_height && posy >= y_threshold && posx>0 && posx<bin_length && b!=0)
 				{   
 					/* vecchio codice 
 					char padnumber[100];
@@ -900,7 +1017,7 @@ void fall_point (	ChIrrAppInterface& application,
 					threshold << shape << "\t";
 					threshold << sphmass << "\t";
 					threshold << conduct << "\n";
-					abody->SetIdentifier(a);
+					//abody->SetIdentifier(a);
 				}
 		
 	}
@@ -1493,9 +1610,6 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 	
 
-
-
-
 	// 
 	// THE SOFT-REAL-TIME CYCLE
 	//
@@ -1609,16 +1723,18 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 							ChVector<> my_StokesForce = electricproperties->StokesForce;
 							
 							// Save on disk some infos...
-							file_for_output << abody->GetIdentifier() << ", "
-								            << abody->GetPos().x << ", "
-											//<< abody->GetPos().y << ", "
-											//<< abody->GetPos().z << ", "
+							file_for_output << abody->GetIdentifier()<< ", "
+                                            << abody->GetPos().x << ", "
+											<< abody->GetPos().y << ", "
+											<< abody->GetPos().z << ", "
+											<< my_cond << ", "
+											<< abody->GetMass()<< "\n";
 											//<< abody->GetPos_dt().x << ", "
 											//<< abody->GetPos_dt().y << ", "
 											//<< abody->GetPos_dt().z << ", "
 											//<< my_StokesForce << ", "
 											//<< my_ElectricImageForce << ", "
-											<< my_ElectricForce << "\n";
+											//<< my_ElectricForce << "\n";
 					                       
 							               
 						}
