@@ -27,7 +27,7 @@ PROJECT(EddyCurrentConveyor)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 #find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_POSTPROCESS unit_FEM unit_PYPARSER)
-find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_PYPARSER)
+find_package(ChronoEngine   COMPONENTS unit_IRRLICHT unit_PYPARSER unit_POSTPROCESS)
 
 
 
