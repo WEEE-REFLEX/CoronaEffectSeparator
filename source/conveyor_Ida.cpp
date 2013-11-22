@@ -15,6 +15,7 @@
 #include "physics/CHapidll.h" 
 #include "physics/CHsystem.h"
 #include "physics/CHconveyor.h"
+#include "core/ChFileutils.h"
 #include "irrlicht_interface/CHbodySceneNode.h"
 #include "irrlicht_interface/CHbodySceneNodeTools.h" 
 #include "irrlicht_interface/CHirrApp.h"
@@ -102,8 +103,10 @@ const double densityPlastic = 900;
 int myid = 1;
 
 // set as true for saving log files each n frames
-bool savefile = true;
+bool savefile = false;
+bool save_irrlicht_screenshots = true;
 int saveEachNframes = 10;
+
 
 int totframes = 0;
 	
@@ -1627,9 +1630,12 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 	record << "Shape" << "\t";
 	record << "Mass (kg)" << "\t";
 	record << "Conductivity" << "\n";
-
-	int stepnum = 0;	
+	
 	int savenum = 0;
+
+	ChFileutils::MakeDirectory("screenshots");
+	ChFileutils::MakeDirectory("output");
+
 
 	while(application.GetDevice()->run()) 
 	{
@@ -1637,46 +1643,39 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 
 		application.DrawAll();
 
-		application.DoStep();
-
-		//mDrum->GetBody()->GetFrame_REF_to_abs().GetCoord(); // UNUSEFUL OPERATION? **ALEX
-
-		totframes++;
-
-		apply_forces (	&mphysicalSystem,		// contains all bodies
-						drum_axis_coordsys, // pos and rotation of axis of drum (not rotating reference!)
-						drumspeed,		 // speed of drum
-						numberofpoles,	 // number of couples of poles
-						intensity,		 // intensity of the magnetic field
-						drumdiameter,
-						h1,
-						h2,
-						L,
-						electrodediameter,
-						j,
-						alpha,
-					    U,
-						f,
-						totframes);
-
-		fall_point (	application,
-						&mphysicalSystem,		// contains all bodies
-						mrigidBodyDrum->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
-						threshold);
-
-		if (receiver.checkbox_plotforces->isChecked())
-			draw_forces ( application , 1000);
-
-		if (receiver.checkbox_plottrajectories->isChecked())
-			DrawTrajectories(application);
-
-		//fall_point (	application,
-		//				parent,
-		//				&mphysicalSystem,		// contains all bodies
-		//				mDrum->GetBody()->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
-		//				threshold);
 		if (!application.GetPaused())
 		{ 
+			application.DoStep();
+
+			totframes++;
+
+			apply_forces (	&mphysicalSystem,		// contains all bodies
+							drum_axis_coordsys, // pos and rotation of axis of drum (not rotating reference!)
+							drumspeed,		 // speed of drum
+							numberofpoles,	 // number of couples of poles
+							intensity,		 // intensity of the magnetic field
+							drumdiameter,
+							h1,
+							h2,
+							L,
+							electrodediameter,
+							j,
+							alpha,
+							U,
+							f,
+							totframes);
+
+			fall_point (	application,
+							&mphysicalSystem,		// contains all bodies
+							mrigidBodyDrum->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
+							threshold);
+
+			if (receiver.checkbox_plotforces->isChecked())
+				draw_forces ( application , 1000);
+
+			if (receiver.checkbox_plottrajectories->isChecked())
+				DrawTrajectories(application);
+
 			
 			// Continuosly create debris that fall on the conveyor belt
 			create_debris(application.GetTimestep(), STATIC_flow, *application.GetSystem(), &application);
@@ -1696,52 +1695,71 @@ ChBodySceneNode* convbase = (ChBodySceneNode*)addChBodySceneNode_easyBox(
 				if (totframes % 20 == 0)
 					UpdateTrajectories(application);
 
-			//***ALEX esempio salvataggio su file...
-			stepnum++;
-			if ((stepnum % saveEachNframes == 0) && (savefile == true))
+			// Save data on file (each n integration steps, to avoid filling
+			// the hard disk and to improve performance)
+			if (totframes % saveEachNframes == 0)
 			{
 				savenum++;
-				char buffer[120];
-				sprintf(buffer, "esempio_output%05d.txt", savenum);
-				ChStreamOutAsciiFile file_for_output(buffer);
-				for (unsigned int i=0; i<mphysicalSystem.Get_bodylist()->size(); i++)
-				{
-					ChBody* abody = (*mphysicalSystem.Get_bodylist())[i];
 
-					// Fetch the ElectricParticleProperty asset from the list
-					for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
+				// Save log file as '.txt' files?
+
+				if (savefile == true)
+				{
+					char buffer[120];
+					sprintf(buffer, "output/esempio_output%05d.txt", savenum);
+					ChStreamOutAsciiFile file_for_output(buffer);
+					for (unsigned int i=0; i<mphysicalSystem.Get_bodylist()->size(); i++)
 					{
-						ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-						
-						if (myasset.IsType<ElectricParticleProperty>())
+						ChBody* abody = (*mphysicalSystem.Get_bodylist())[i];
+
+						// Fetch the ElectricParticleProperty asset from the list
+						for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 						{
-							// ok, its a particle!
-							ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
-							double my_cond  = electricproperties->conductivity ; // ..
-							ChVector<> my_ElectricForce = electricproperties->ElectricForce;
-							ChVector<> my_ElectricImageForce = electricproperties->ElectricImageForce;
-							ChVector<> my_StokesForce = electricproperties->StokesForce;
+							ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
 							
-							// Save on disk some infos...
-							file_for_output << abody->GetIdentifier()<< ", "
-                                            << abody->GetPos().x << ", "
-											<< abody->GetPos().y << ", "
-											<< abody->GetPos().z << ", "
-											<< my_cond << ", "
-											<< abody->GetMass()<< "\n";
-											//<< abody->GetPos_dt().x << ", "
-											//<< abody->GetPos_dt().y << ", "
-											//<< abody->GetPos_dt().z << ", "
-											//<< my_StokesForce << ", "
-											//<< my_ElectricImageForce << ", "
-											//<< my_ElectricForce << "\n";
-					                       
-							               
+							if (myasset.IsType<ElectricParticleProperty>())
+							{
+								// ok, its a particle!
+								ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
+								double my_cond  = electricproperties->conductivity ; // ..
+								ChVector<> my_ElectricForce = electricproperties->ElectricForce;
+								ChVector<> my_ElectricImageForce = electricproperties->ElectricImageForce;
+								ChVector<> my_StokesForce = electricproperties->StokesForce;
+								
+								// Save on disk some infos...
+								file_for_output << abody->GetIdentifier()<< ", "
+												<< abody->GetPos().x << ", "
+												<< abody->GetPos().y << ", "
+												<< abody->GetPos().z << ", "
+												<< my_cond << ", "
+												<< abody->GetMass()<< "\n";
+												//<< abody->GetPos_dt().x << ", "
+												//<< abody->GetPos_dt().y << ", "
+												//<< abody->GetPos_dt().z << ", "
+												//<< my_StokesForce << ", "
+												//<< my_ElectricImageForce << ", "
+												//<< my_ElectricForce << "\n";
+						                       
+								               
+							}
 						}
 					}
 				}
-			} // end saving code
+				
+				// Save Irrlicht screenshots?
 
+				if (save_irrlicht_screenshots == true)
+				{
+					video::IImage* image = application.GetVideoDriver()->createScreenShot();
+					char buffer[120];
+					sprintf(buffer, "screenshots/screenshot%05d.bmp", savenum);
+					GetLog() << "\n saving screenshot: " << buffer;
+					if (image)
+						application.GetVideoDriver()->writeImageToFile(image, buffer);
+					image->drop();
+				}
+
+			} // end saving code
 
 			
 		
