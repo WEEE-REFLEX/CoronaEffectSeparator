@@ -71,7 +71,7 @@ const double f = U/log(((h1+j-(drumdiameter/2))*(h2+j-(electrodediameter/2)))/((
 // conveyor constant
 const double conveyor_length=1;// accorciato da 2 a 1,*****ida
 const double conveyor_width=0.6;
-const double conv_thick = 0.00005;
+const double conv_thick = 0.01; // no troppo sottile, altrimenti non va la collision detection! Non importa se compenetra il cilindro.
 
 const double ro=1.225;  //fluid density (air) [Kg/m^3]
 
@@ -95,7 +95,7 @@ const double splitter_height=0.4;
 const double xnozzlesize = 0.2;
 const double znozzlesize = 0.3;
 const double ynozzlesize = 0.5;
-const double ynozzle = 0.3;
+const double ynozzle = 0.01;
 const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato avanti****ida
 
 const double densityMetal = 8900;//1820;
@@ -105,7 +105,7 @@ int myid = 1;
 
 // set as true for saving log files each n frames
 bool save_dataset = false;
-bool save_irrlicht_screenshots = true;
+bool save_irrlicht_screenshots = false;
 bool save_POV_screenshots = false;
 int saveEachNframes = 10;
 
@@ -113,6 +113,9 @@ bool irr_cast_shadows = false;
 
 int totframes = 0;
 	
+bool init_particle_speed = true;
+
+double particle_magnification = 5;
 
 
 // If one needs to add special data to a particle/object, the proper way to
@@ -309,8 +312,8 @@ public:
 				// ..add a GUI slider to control particles flow
 				scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
 								true, rect<s32>(560, 15, 700, 15+20), 0, 101);
-				scrollbar_flow->setMax(300); 
-				scrollbar_flow->setPos(150);
+				scrollbar_flow->setMax(100); 
+				scrollbar_flow->setPos(50);
 				text_flow = application->GetIGUIEnvironment()->addStaticText(
 							L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
 
@@ -348,7 +351,9 @@ public:
 							if (id == 101) // id of 'flow' slider..
 							{
 								s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-								STATIC_flow = (double)pos;
+								STATIC_flow = 1000* ((double)pos/50);
+								char message[50]; sprintf(message,"Flow %d [particl/s]", (int)STATIC_flow);
+								text_flow->setText(core::stringw(message).c_str());
 							}
 							if (id == 102) // id of 'speed' slider..
 							{
@@ -447,7 +452,7 @@ void create_debris(double dt, double particles_second,
 			// Create a body
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
-			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, conv_thick/2+sphrad, -0.5*znozzlesize+ChRandom()*znozzlesize));
+			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle, -0.5*znozzlesize+ChRandom()*znozzlesize));
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
@@ -456,8 +461,7 @@ void create_debris(double dt, double particles_second,
 			       
 			// mrigidBody->SetRollingFriction(0.1);
 			// mrigidBody->SetSpinningFriction(0.1);
-			//mrigidBody->GetCollisionModel()->SetFamily(5);
-			//mrigidBody->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
+
 
 			// Define a collision shape 
 			mrigidBody->GetCollisionModel()->ClearModel();
@@ -468,7 +472,7 @@ void create_debris(double dt, double particles_second,
 
 			// Attach a visualization shape asset. 
 			ChSharedPtr<ChSphereShape> msphere(new ChSphereShape);
-			msphere->GetSphereGeometry().rad = sphrad*5; // test****
+			msphere->GetSphereGeometry().rad = sphrad * particle_magnification; 
 			msphere->GetSphereGeometry().center = ChVector<>(0,0,0);
 			mrigidBody->AddAsset(msphere);
 			/* etc. optional
@@ -505,7 +509,7 @@ void create_debris(double dt, double particles_second,
 			// Create a body
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
-			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle+i*0.005, -0.5*znozzlesize+ChRandom()*znozzlesize));
+			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle, -0.5*znozzlesize+ChRandom()*znozzlesize));
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.4f);
@@ -519,7 +523,7 @@ void create_debris(double dt, double particles_second,
 
 			// Attach a visualization shape asset. 
 			ChSharedPtr<ChBoxShape> mbox(new ChBoxShape);
-			mbox->GetBoxGeometry().SetLenghts(ChVector<>(sphrad*2*xscale, sphrad*2*yscale, sphrad*2*yscale));
+			mbox->GetBoxGeometry().SetLenghts(ChVector<>(sphrad*2*xscale, sphrad*2*yscale, sphrad*2*yscale) * particle_magnification);
 			mrigidBody->AddAsset(mbox);
 
 			// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
@@ -545,7 +549,7 @@ void create_debris(double dt, double particles_second,
 			// Create a body
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
-			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle+i*0.005, -0.5*znozzlesize+ChRandom()*znozzlesize));
+			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle, -0.5*znozzlesize+ChRandom()*znozzlesize));
 			mrigidBody->SetMass(cylmass);
 			mrigidBody->SetInertiaXX(ChVector<>(cylinertia,cylinertia2,cylinertia));
 			mrigidBody->SetFriction(0.4f);
@@ -560,8 +564,8 @@ void create_debris(double dt, double particles_second,
 			// Attach a visualization shape asset. 
 			ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
 			mcyl->GetCylinderGeometry().rad = sphrad;
-			mcyl->GetCylinderGeometry().p1 = ChVector<>(0, cylhei/2,0);
-			mcyl->GetCylinderGeometry().p2 = ChVector<>(0,-cylhei/2,0);
+			mcyl->GetCylinderGeometry().p1 = ChVector<>(0, cylhei/2,0) * particle_magnification;
+			mcyl->GetCylinderGeometry().p2 = ChVector<>(0,-cylhei/2,0) * particle_magnification;
 			mrigidBody->AddAsset(mcyl);
 
 			// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
@@ -667,7 +671,7 @@ void create_debris(double dt, double particles_second,
 		// 5  ---- If a POV exporter is used, one must add the particle to its database
 		// 
 
-		if (!created_body.IsNull() && mpov_exporter)
+		if (!created_body.IsNull() && mpov_exporter && save_POV_screenshots)
 		{
 			mpov_exporter->Add(created_body);
 		}
@@ -683,6 +687,10 @@ void create_debris(double dt, double particles_second,
 			created_body->AddAsset(massettraj);
 		}
 
+		if (init_particle_speed)
+		{
+			created_body->SetPos_dt(ChVector<>(STATIC_speed, 0,0));
+		}
 
 	}
 
@@ -724,7 +732,7 @@ void purge_debris(ChSystem& mysystem, double max_age = 5.0)
 			ChSharedPtr<ChBody> mysharedbody(abody); // ..shared pointer
 
 			mysystem.Remove(mysharedbody);
-			mysharedbody->RemoveRef(); //***???? shouldn't be needed..
+			// mysharedbody->RemoveRef(); //***NOT needed - previously needed cause always Add() to POV exporter..
 			i--; // this because if deleted, the rest of the array is shifted back one position..
 		}
 	}
@@ -1473,12 +1481,14 @@ int main(int argc, char* argv[])
 	mconveyor->SetFriction(0.9);
     mconveyor->SetRollingFriction(0.01);
 	mconveyor->SetConveyorSpeed(STATIC_speed);
-	mconveyor->SetPos( ChVector<>(0, 0, 0) );
+
+	mconveyor->SetPos( ChVector<>(0, 0-conv_thick, 0) );
+
+	mconveyor->GetPlate()->GetCollisionModel()->SetFamily(2); // note the additional  ->GetPlate()
+    mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
+	mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
 
 	mphysicalSystem.Add(mconveyor);
-	mconveyor->GetCollisionModel()->SetFamily(2);
-    mconveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
-	mconveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
 
 	// Attach a visualization shape asset (optional). 
 	ChSharedPtr<ChBoxShape> mbox(new ChBoxShape);
@@ -1501,15 +1511,20 @@ int main(int argc, char* argv[])
 	mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
 	mrigidBodyDrum->SetFriction(0.9f); 
 	mrigidBodyDrum->SetRollingFriction(0.01);
-	mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
-	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
-	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-
+	
 	// Define a collision shape 
 	mrigidBodyDrum->GetCollisionModel()->ClearModel();
 	mrigidBodyDrum->GetCollisionModel()->AddCylinder(drumradius,drumradius,conveyor_width);
 	mrigidBodyDrum->GetCollisionModel()->BuildModel();
 	mrigidBodyDrum->SetCollide(true);
+
+	mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
+	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
+	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+
+		// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mrigidBodyDrum);
+
 
 	// Attach a visualization shape asset. 
 	ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
@@ -1518,8 +1533,7 @@ int main(int argc, char* argv[])
 	mcyl->GetCylinderGeometry().rad = drumradius;
 	mrigidBodyDrum->AddAsset(mcyl);
 	
-	// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mrigidBodyDrum);
+	
 
 	// Optional: attach a 'blue' texture to easily recognize metal stuff in 3d view
 	ChSharedPtr<ChTexture> mtexturedrum(new ChTexture);
@@ -1570,9 +1584,9 @@ int main(int argc, char* argv[])
 												ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0), 
 												ChVector<>(elecradius*2,conveyor_width,elecradius*2));
 	mElec->GetBody()->SetBodyFixed(true);
-    mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
-	mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-	mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
+    //mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);  not needed
+	//mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+	//mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
 
 
 	
@@ -1591,10 +1605,6 @@ int main(int argc, char* argv[])
 	mrigidBodyBrush->SetInertiaXX(ChVector<>(Ixx2,Ixx2,Ixx2));
 	mrigidBodyBrush->SetFriction(0.9f);
 	mrigidBodyBrush->SetRollingFriction(0.01);
-	mrigidBodyBrush->GetCollisionModel()->SetFamily(3); 
-	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
-	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-	
 
 	// Define a collision shape 
 	mrigidBodyBrush->GetCollisionModel()->ClearModel();
@@ -1602,15 +1612,20 @@ int main(int argc, char* argv[])
 	mrigidBodyBrush->GetCollisionModel()->BuildModel();
 	mrigidBodyBrush->SetCollide(true);
 
+	mrigidBodyBrush->GetCollisionModel()->SetFamily(1);
+	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
+
 	// Attach a visualization shape asset. 
 	ChSharedPtr<ChCylinderShape> mcyl2(new ChCylinderShape);
 	mcyl2->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
 	mcyl2->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
 	mcyl2->GetCylinderGeometry().rad = brushradius;
 	mrigidBodyBrush->AddAsset(mcyl2);
-	
+
 	// Finally, do not forget to add the body to the system:
 	application.GetSystem()->Add(mrigidBodyBrush);
+
 
 	// Optional: attach a 'pink' texture to easily recognize metal stuff in 3d view
 	ChSharedPtr<ChTexture> mtexturebrush(new ChTexture);
@@ -1716,8 +1731,10 @@ int main(int argc, char* argv[])
 	application.SetStepManage(true);
 	application.SetTimestep(0.001);
 	
+	application.GetSystem()->SetIntegrationType(ChSystem::INT_TASORA);
+	application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD); // or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
 		// important! dt is small, and particles are small, so it's better to keep this small...
-	application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15);
+	application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15); // not needed in INT_TASORA, only for INT_ANITESCU
 
 
 	double threshold = -0.815;
@@ -1782,7 +1799,7 @@ int main(int argc, char* argv[])
 
 			// Limit the max age (in seconds) of debris particles on the scene, 
 			// deleting the oldest ones, for performance
-			purge_debris (*application.GetSystem(), 6.0);
+			purge_debris (*application.GetSystem(),6);
 
 			// Maybe the user played with the slider and changed STATIC_speed...
 		 	mconveyor->SetConveyorSpeed(STATIC_speed);
