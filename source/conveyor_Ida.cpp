@@ -15,6 +15,7 @@
 #include "physics/CHapidll.h" 
 #include "physics/CHsystem.h"
 #include "physics/CHconveyor.h"
+#include "physics/CHbodyAuxRef.h"
 #include "core/ChFileutils.h"
 #include "irrlicht_interface/CHbodySceneNode.h"
 #include "irrlicht_interface/CHbodySceneNodeTools.h" 
@@ -69,9 +70,9 @@ const double f = U/log(((h1+j-(drumdiameter/2))*(h2+j-(electrodediameter/2)))/((
 
 
 // conveyor constant
-const double conveyor_length=1;// accorciato da 2 a 1,*****ida
-const double conveyor_width=0.6;
-const double conv_thick = 0.01; // no troppo sottile, altrimenti non va la collision detection! Non importa se compenetra il cilindro.
+const double conveyor_length=0.400;//***ALEX, from CAD
+const double conveyor_width=0.3; //***ALEX, from CAD, was 0.6
+const double conv_thick = 0.01; // non troppo sottile, altrimenti non va la collision detection! Non importa se compenetra il cilindro.
 
 const double ro=1.225;  //fluid density (air) [Kg/m^3]
 
@@ -93,7 +94,7 @@ const double splitter_width=0.01;
 const double splitter_height=0.4;
 // hopper constant
 const double xnozzlesize = 0.2;
-const double znozzlesize = 0.3;
+const double znozzlesize = 0.182; //**from CAD, nozzle width
 const double ynozzlesize = 0.5;
 const double ynozzle = 0.01;
 const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato avanti****ida
@@ -103,19 +104,35 @@ const double densityPlastic = 900;
 
 int myid = 1;
 
+// Coordinate systems with position and rotation of important items in the 
+// simulator. These are initializad with constant values, but if loading the
+// SolidWorks model, they will be changed accordingly to what is found in the CAD 
+// file (see later, where the SolidWorks model is parsed). 
+
+ChCoordsys<> conveyor_csys( ChVector<>(0, 0-conv_thick, 0) ) ; // default position
+ChCoordsys<> drum_csys    ( ChVector<>(conveyor_length/2, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
+ChCoordsys<> nozzle_csys  ( ChVector<>(xnozzle, ynozzle, 0) ); // default position
+
+
 // set as true for saving log files each n frames
 bool save_dataset = false;
 bool save_irrlicht_screenshots = false;
 bool save_POV_screenshots = false;
 int saveEachNframes = 10;
 
-bool irr_cast_shadows = false;
+bool irr_cast_shadows = true;
 
 int totframes = 0;
 	
 bool init_particle_speed = true;
 
 double particle_magnification = 5;
+
+bool create_programmatically_bins    = false;
+bool create_programmatically_nozzle  = false;
+bool create_programmatically_drum    = false;
+bool create_programmatically_fences  = false;
+
 
 
 // If one needs to add special data to a particle/object, the proper way to
@@ -313,7 +330,7 @@ public:
 				scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
 								true, rect<s32>(560, 15, 700, 15+20), 0, 101);
 				scrollbar_flow->setMax(100); 
-				scrollbar_flow->setPos(50);
+				scrollbar_flow->setPos(25);
 				text_flow = application->GetIGUIEnvironment()->addStaticText(
 							L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
 
@@ -326,7 +343,7 @@ public:
 								L"Conveyor speed [m/s]:", rect<s32>(710,40,800,40+20), false);
 
 				// ..add GUI checkmark to enable plotting forces
-				checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,55+20),
+				checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,65+20),
 								0, 105, L"Plot applied CES forces");
 
 				// ..add GUI checkmark to enable plotting forces
@@ -351,7 +368,7 @@ public:
 							if (id == 101) // id of 'flow' slider..
 							{
 								s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-								STATIC_flow = 1000* ((double)pos/50);
+								STATIC_flow = 1000* ((double)pos/25);
 								char message[50]; sprintf(message,"Flow %d [particl/s]", (int)STATIC_flow);
 								text_flow->setText(core::stringw(message).c_str());
 							}
@@ -362,8 +379,39 @@ public:
 							}
 					break;
 					}
-					
 				} 
+				// check if user presses keys
+				if (event.EventType == irr::EET_KEY_INPUT_EVENT && !event.KeyInput.PressedDown)
+				{
+					irr::core::matrix4 matrix;
+					switch (event.KeyInput.Key)
+					{
+					case irr::KEY_F1:	// camera will point to drum
+						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0,0.2,0.4) ) );
+						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos ) );
+						application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
+						return true;
+					case irr::KEY_F2:	// camera will point to nozzle
+						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( nozzle_csys.pos + ChVector<>(0.2,0.2,0.4) ) );
+						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( nozzle_csys.pos ) );
+						application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
+						return true;
+					case irr::KEY_F3:	// camera will point to bins
+						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0.8, 0.2, 0.9) ) );
+						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos + ChVector<>(0.2,-0.8, 0  ) ) );
+						application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
+						return true;
+					case irr::KEY_F4:	// camera will point to drum in orthographic projection
+						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0.0,0.0, 4) ) );
+						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos ) );	
+						matrix.buildProjectionMatrixOrthoLH(0.4, 0.3, 0.3f, 100.f);
+						application->GetSceneManager()->getActiveCamera()->setProjectionMatrix(matrix,true);
+						return true;
+
+					default:
+						break;
+					}
+				}
 
 				return false;
 			}
@@ -411,6 +459,7 @@ ChSharedPtr<ChBody> create_box_collision_shape(ChVector<> pos, //  center of box
 // Function that creates debris that fall on the conveyor belt, to be called at each dt
 
 void create_debris(double dt, double particles_second, 
+				   ChCoordsys<> mnozzle_csys,
 				   ChSystem& mysystem, 
 				   ChIrrApp* irr_application,
 				   ChPovRay* mpov_exporter)
@@ -443,6 +492,8 @@ void create_debris(double dt, double particles_second,
 
 		double rand_shape_fract = ChRandom();
 
+		ChVector<> rand_position = mnozzle_csys.TrasformLocalToParent( ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize, 0, -0.5*znozzlesize+ChRandom()*znozzlesize) ) ;
+
 		//
 		// 1 ---- Create particle 
 		// 
@@ -452,7 +503,7 @@ void create_debris(double dt, double particles_second,
 			// Create a body
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
-			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle, -0.5*znozzlesize+ChRandom()*znozzlesize));
+			mrigidBody->SetPos(rand_position);
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
@@ -509,7 +560,7 @@ void create_debris(double dt, double particles_second,
 			// Create a body
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
-			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle, -0.5*znozzlesize+ChRandom()*znozzlesize));
+			mrigidBody->SetPos(rand_position);
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.4f);
@@ -549,7 +600,7 @@ void create_debris(double dt, double particles_second,
 			// Create a body
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
-			mrigidBody->SetPos(ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize+xnozzle, ynozzle, -0.5*znozzlesize+ChRandom()*znozzlesize));
+			mrigidBody->SetPos(rand_position);
 			mrigidBody->SetMass(cylmass);
 			mrigidBody->SetInertiaXX(ChVector<>(cylinertia,cylinertia2,cylinertia));
 			mrigidBody->SetFriction(0.4f);
@@ -686,6 +737,10 @@ void create_debris(double dt, double particles_second,
 			ChSharedPtr<ParticleTrajectory> massettraj(new ParticleTrajectory);
 			created_body->AddAsset(massettraj);
 		}
+
+		// 
+		// 6 --- set initial speed to particles as soon as created, so they do not have transient slip with belt
+		//
 
 		if (init_particle_speed)
 		{
@@ -1252,201 +1307,207 @@ int main(int argc, char* argv[])
 
 
 	// Set small collision envelopes for objects that will be created from now on..
-	ChCollisionModel::SetDefaultSuggestedEnvelope(0.002);
+	ChCollisionModel::SetDefaultSuggestedEnvelope(0.003);
 	ChCollisionModel::SetDefaultSuggestedMargin  (0.002);
 
 
 
-	// Create two conveyor fences
-
-	ChSharedPtr<ChBody> mfence1 = create_box_collision_shape(
-				ChVector<>(0,fence_height/2,-conveyor_width/2-fence_width/2),	// pos
-				ChVector<>(conveyor_length,fence_height,fence_width)			// size
-				);
-	application.GetSystem()->Add(mfence1);
-	mfence1->SetBodyFixed(true);
-	mfence1->SetFriction(0.01);
-	mfence1->GetCollisionModel()->SetFamily(1);
-    mfence1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
-	mfence1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
-
-
-	ChSharedPtr<ChBody> mfence2 = create_box_collision_shape(
-				ChVector<>(0,fence_height/2,conveyor_width/2+fence_width/2),	// pos
-				ChVector<>(conveyor_length,fence_height,fence_width)			// size
-				);
-	application.GetSystem()->Add(mfence2);
-	mfence2->SetBodyFixed(true);
-	mfence2->SetFriction(0.01);
-    mfence2->GetCollisionModel()->SetFamily(1);
-    mfence2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
-	mfence2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
-
-
-	ChSharedPtr<ChBody> mfence3 = create_box_collision_shape(
-				ChVector<>(-conveyor_length/2-fence_width/2,fence_height/2, 0),	// pos
-				ChVector<>(fence_width,fence_height,conveyor_width+2*fence_width),	// size
-				ChQuaternion<>(0,0,1,0)
-				);
-	application.GetSystem()->Add(mfence3);
-	mfence3->SetBodyFixed(true);
-	mfence3->SetFriction(0.01);
-    mfence3->GetCollisionModel()->SetFamily(1);
-    mfence3->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
-	mfence3->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
-
-
-	ChSharedPtr<ChBody> mfence4 = create_box_collision_shape(
-				ChVector<>(conveyor_length/2-fence_width/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2, 0),//prima parete verticale delle scatole in basso verso il rotore
-				ChVector<>(fence_width,bin_height,bin_width+2*fence_width),	// size
-				ChQuaternion<>(0,0,1,0)
-				);
-	application.GetSystem()->Add(mfence4);
-	mfence4->SetBodyFixed(true);
-	mfence4->SetFriction(0.1);
-
-
-	ChSharedPtr<ChBody> mfence5 = create_box_collision_shape(
-				ChVector<>(conveyor_length/2+bin_length/2-2*drumdiameter,y_posbin-binbase/2-drumdiameter/2+binbase, 0),//fondo della scatola
-				ChVector<>(bin_length,binbase,bin_width)	// size
-				);
-	application.GetSystem()->Add(mfence5);
-	mfence5->SetBodyFixed(true);
-	mfence5->SetFriction(0.1);
-
-
-	ChSharedPtr<ChBody> mfence6 = create_box_collision_shape(
-				ChVector<>(conveyor_length/2+bin_length+fence_width/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2, 0),//ultima parete verticale della scatola in basso lontano dal rotore
-				ChVector<>(fence_width,bin_height,bin_width+2*fence_width),	// size
-				ChQuaternion<>(0,0,1,0)
-				);
-	application.GetSystem()->Add(mfence6);
-	mfence6->SetBodyFixed(true);
-	mfence6->SetFriction(0.1);
-
-
-	ChSharedPtr<ChBody> mfence7 = create_box_collision_shape(
-				ChVector<>(conveyor_length/2+bin_length/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2,-bin_width/2-fence_width/2), //parete sx guardando dal fondo
-				ChVector<>(bin_length,bin_height,fence_width),	// size
-				ChQuaternion<>(0,1,0,0)
-				);
-	application.GetSystem()->Add(mfence7);
-	mfence7->SetBodyFixed(true);
-	mfence7->SetFriction(0.1);
-
-
-	ChSharedPtr<ChBody> mfence8 = create_box_collision_shape(
-				ChVector<>(conveyor_length/2+bin_length/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2, bin_width/2+fence_width/2), //parete dx guardando dal fondo
-				ChVector<>(bin_length,bin_height,fence_width),	// size
-				ChQuaternion<>(0,1,0,0)
-				);
-	application.GetSystem()->Add(mfence8);
-	mfence8->SetBodyFixed(true);
-	mfence8->SetFriction(0.1);
-
-	if (n == 2)
+	// Create conveyor fences
+	if (create_programmatically_fences)
 	{
-        double x_splitter1=bin_length/2;
-		ChSharedPtr<ChBody> mfence9 = create_box_collision_shape(
-						ChVector<>(conveyor_length/2+x_splitter1-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
-						ChVector<>(splitter_width,splitter_height,bin_width),	// size
-						ChQuaternion<>(0,0,1,0)
-						);
-		application.GetSystem()->Add(mfence9);
-		mfence9->SetBodyFixed(true);
-		mfence9->SetFriction(0.1);
-	}
-	if (n == 3)
-	{
-		double x_splitter1=bin_length/3;
-        double x_splitter2=2*bin_length/3;
-		ChSharedPtr<ChBody> mfence9 = create_box_collision_shape(
-						ChVector<>(conveyor_length/2+x_splitter1-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
-						ChVector<>(splitter_width,splitter_height,bin_width),	// size
-						ChQuaternion<>(0,0,1,0)
-						);
-		application.GetSystem()->Add(mfence9);
-		mfence9->SetBodyFixed(true);
-		mfence9->SetFriction(0.1);
-		ChSharedPtr<ChBody> mfence10 = create_box_collision_shape(
-						ChVector<>(conveyor_length/2+x_splitter2-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
-						ChVector<>(splitter_width,splitter_height,bin_width),	// size
-						ChQuaternion<>(0,0,1,0)
-						);
-		application.GetSystem()->Add(mfence10);
-		mfence10->SetBodyFixed(true);
-		mfence10->SetFriction(0.1);
-	}
-	if (n == 4)
-	{
-		double x_splitter1=bin_length/2;
-        double x_splitter2=bin_length/4;
-        double x_splitter3=3*bin_length/4;
-		ChSharedPtr<ChBody> mfence9 = create_box_collision_shape(
-						ChVector<>(conveyor_length/2+x_splitter1-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
-						ChVector<>(splitter_width,splitter_height,bin_width),	// size
-						ChQuaternion<>(0,0,1,0)
-						);
-		application.GetSystem()->Add(mfence9);
-		mfence9->SetBodyFixed(true);
-		mfence9->SetFriction(0.1);
-		ChSharedPtr<ChBody> mfence10 = create_box_collision_shape(
-						ChVector<>(conveyor_length/2+x_splitter2-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
-						ChVector<>(splitter_width,splitter_height,bin_width),	// size
-						ChQuaternion<>(0,0,1,0)
-						);
-		application.GetSystem()->Add(mfence10);
-		mfence10->SetBodyFixed(true);
-		mfence10->SetFriction(0.1);
-		ChSharedPtr<ChBody> mfence11 = create_box_collision_shape(
-						ChVector<>(conveyor_length/2+x_splitter3-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
-						ChVector<>(splitter_width,splitter_height,bin_width),	// size
-						ChQuaternion<>(0,0,1,0)
-						);
-		application.GetSystem()->Add(mfence11);
-		mfence11->SetBodyFixed(true);
-		mfence11->SetFriction(0.1);
+		ChSharedPtr<ChBody> mfence1 = create_box_collision_shape(
+					ChVector<>(0,fence_height/2,-conveyor_width/2-fence_width/2),	// pos
+					ChVector<>(conveyor_length,fence_height,fence_width)			// size
+					);
+		application.GetSystem()->Add(mfence1);
+		mfence1->SetBodyFixed(true);
+		mfence1->SetFriction(0.01);
+		mfence1->GetCollisionModel()->SetFamily(1);
+		mfence1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
+		mfence1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
+
+
+		ChSharedPtr<ChBody> mfence2 = create_box_collision_shape(
+					ChVector<>(0,fence_height/2,conveyor_width/2+fence_width/2),	// pos
+					ChVector<>(conveyor_length,fence_height,fence_width)			// size
+					);
+		application.GetSystem()->Add(mfence2);
+		mfence2->SetBodyFixed(true);
+		mfence2->SetFriction(0.01);
+		mfence2->GetCollisionModel()->SetFamily(1);
+		mfence2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
+		mfence2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
+
+
+		ChSharedPtr<ChBody> mfence3 = create_box_collision_shape(
+					ChVector<>(-conveyor_length/2-fence_width/2,fence_height/2, 0),	// pos
+					ChVector<>(fence_width,fence_height,conveyor_width+2*fence_width),	// size
+					ChQuaternion<>(0,0,1,0)
+					);
+		application.GetSystem()->Add(mfence3);
+		mfence3->SetBodyFixed(true);
+		mfence3->SetFriction(0.01);
+		mfence3->GetCollisionModel()->SetFamily(1);
+		mfence3->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
+		mfence3->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
 	}
 
-	ChSharedPtr<ChBody> mfence12 = create_box_collision_shape(
-						ChVector<>(xnozzle-xnozzlesize/2-fence_width/2,ynozzlesize/2+ynozzle+binbase,0),
-						ChVector<>(fence_width,ynozzlesize,znozzlesize+2*fence_width),
-						ChQuaternion<>(0,0,1,0)
-						);
-	application.GetSystem()->Add(mfence12);
-	mfence12->SetBodyFixed(true);
-	mfence12->SetFriction(0.1);
+	if (create_programmatically_bins)
+	{
+		ChSharedPtr<ChBody> mfence4 = create_box_collision_shape(
+					ChVector<>(conveyor_length/2-fence_width/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2, 0),//prima parete verticale delle scatole in basso verso il rotore
+					ChVector<>(fence_width,bin_height,bin_width+2*fence_width),	// size
+					ChQuaternion<>(0,0,1,0)
+					);
+		application.GetSystem()->Add(mfence4);
+		mfence4->SetBodyFixed(true);
+		mfence4->SetFriction(0.1);
 
-	ChSharedPtr<ChBody> mfence13 = create_box_collision_shape(
-						ChVector<>(xnozzle+xnozzlesize/2+fence_width/2,ynozzlesize/2+ynozzle+binbase,0),
-						ChVector<>(fence_width,ynozzlesize,znozzlesize+2*fence_width),
-						ChQuaternion<>(0,0,1,0)
-						);
-	application.GetSystem()->Add(mfence13);
-	mfence13->SetBodyFixed(true);
-	mfence13->SetFriction(0.1);
 
-	ChSharedPtr<ChBody> mfence14 = create_box_collision_shape(
-						ChVector<>(xnozzle,ynozzlesize/2+ynozzle+binbase,znozzlesize/2+fence_width/2),
-						ChVector<>(xnozzlesize,ynozzlesize,fence_width),
-						ChQuaternion<>(0,1,0,0)
-						);
-	application.GetSystem()->Add(mfence14);
-	mfence14->SetBodyFixed(true);
-	mfence14->SetFriction(0.1);
+		ChSharedPtr<ChBody> mfence5 = create_box_collision_shape(
+					ChVector<>(conveyor_length/2+bin_length/2-2*drumdiameter,y_posbin-binbase/2-drumdiameter/2+binbase, 0),//fondo della scatola
+					ChVector<>(bin_length,binbase,bin_width)	// size
+					);
+		application.GetSystem()->Add(mfence5);
+		mfence5->SetBodyFixed(true);
+		mfence5->SetFriction(0.1);
 
-	ChSharedPtr<ChBody> mfence15 = create_box_collision_shape(
-						ChVector<>(xnozzle,ynozzlesize/2+ynozzle+binbase,-znozzlesize/2-fence_width/2),
-						ChVector<>(xnozzlesize,ynozzlesize,fence_width),
-						ChQuaternion<>(0,1,0,0)
-						);
-	application.GetSystem()->Add(mfence15);
-	mfence15->SetBodyFixed(true);
-	mfence15->SetFriction(0.1);
 
+		ChSharedPtr<ChBody> mfence6 = create_box_collision_shape(
+					ChVector<>(conveyor_length/2+bin_length+fence_width/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2, 0),//ultima parete verticale della scatola in basso lontano dal rotore
+					ChVector<>(fence_width,bin_height,bin_width+2*fence_width),	// size
+					ChQuaternion<>(0,0,1,0)
+					);
+		application.GetSystem()->Add(mfence6);
+		mfence6->SetBodyFixed(true);
+		mfence6->SetFriction(0.1);
+
+
+		ChSharedPtr<ChBody> mfence7 = create_box_collision_shape(
+					ChVector<>(conveyor_length/2+bin_length/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2,-bin_width/2-fence_width/2), //parete sx guardando dal fondo
+					ChVector<>(bin_length,bin_height,fence_width),	// size
+					ChQuaternion<>(0,1,0,0)
+					);
+		application.GetSystem()->Add(mfence7);
+		mfence7->SetBodyFixed(true);
+		mfence7->SetFriction(0.1);
+
+
+		ChSharedPtr<ChBody> mfence8 = create_box_collision_shape(
+					ChVector<>(conveyor_length/2+bin_length/2-2*drumdiameter,y_posbin+bin_height/2-drumdiameter/2, bin_width/2+fence_width/2), //parete dx guardando dal fondo
+					ChVector<>(bin_length,bin_height,fence_width),	// size
+					ChQuaternion<>(0,1,0,0)
+					);
+		application.GetSystem()->Add(mfence8);
+		mfence8->SetBodyFixed(true);
+		mfence8->SetFriction(0.1);
+
+		if (n == 2)
+		{
+			double x_splitter1=bin_length/2;
+			ChSharedPtr<ChBody> mfence9 = create_box_collision_shape(
+							ChVector<>(conveyor_length/2+x_splitter1-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
+							ChVector<>(splitter_width,splitter_height,bin_width),	// size
+							ChQuaternion<>(0,0,1,0)
+							);
+			application.GetSystem()->Add(mfence9);
+			mfence9->SetBodyFixed(true);
+			mfence9->SetFriction(0.1);
+		}
+		if (n == 3)
+		{
+			double x_splitter1=bin_length/3;
+			double x_splitter2=2*bin_length/3;
+			ChSharedPtr<ChBody> mfence9 = create_box_collision_shape(
+							ChVector<>(conveyor_length/2+x_splitter1-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
+							ChVector<>(splitter_width,splitter_height,bin_width),	// size
+							ChQuaternion<>(0,0,1,0)
+							);
+			application.GetSystem()->Add(mfence9);
+			mfence9->SetBodyFixed(true);
+			mfence9->SetFriction(0.1);
+			ChSharedPtr<ChBody> mfence10 = create_box_collision_shape(
+							ChVector<>(conveyor_length/2+x_splitter2-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
+							ChVector<>(splitter_width,splitter_height,bin_width),	// size
+							ChQuaternion<>(0,0,1,0)
+							);
+			application.GetSystem()->Add(mfence10);
+			mfence10->SetBodyFixed(true);
+			mfence10->SetFriction(0.1);
+		}
+		if (n == 4)
+		{
+			double x_splitter1=bin_length/2;
+			double x_splitter2=bin_length/4;
+			double x_splitter3=3*bin_length/4;
+			ChSharedPtr<ChBody> mfence9 = create_box_collision_shape(
+							ChVector<>(conveyor_length/2+x_splitter1-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
+							ChVector<>(splitter_width,splitter_height,bin_width),	// size
+							ChQuaternion<>(0,0,1,0)
+							);
+			application.GetSystem()->Add(mfence9);
+			mfence9->SetBodyFixed(true);
+			mfence9->SetFriction(0.1);
+			ChSharedPtr<ChBody> mfence10 = create_box_collision_shape(
+							ChVector<>(conveyor_length/2+x_splitter2-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
+							ChVector<>(splitter_width,splitter_height,bin_width),	// size
+							ChQuaternion<>(0,0,1,0)
+							);
+			application.GetSystem()->Add(mfence10);
+			mfence10->SetBodyFixed(true);
+			mfence10->SetFriction(0.1);
+			ChSharedPtr<ChBody> mfence11 = create_box_collision_shape(
+							ChVector<>(conveyor_length/2+x_splitter3-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
+							ChVector<>(splitter_width,splitter_height,bin_width),	// size
+							ChQuaternion<>(0,0,1,0)
+							);
+			application.GetSystem()->Add(mfence11);
+			mfence11->SetBodyFixed(true);
+			mfence11->SetFriction(0.1);
+		}
+	}
+
+	if (create_programmatically_nozzle)
+	{
+		ChSharedPtr<ChBody> mfence12 = create_box_collision_shape(
+							ChVector<>(xnozzle-xnozzlesize/2-fence_width/2,ynozzlesize/2+ynozzle+binbase,0),
+							ChVector<>(fence_width,ynozzlesize,znozzlesize+2*fence_width),
+							ChQuaternion<>(0,0,1,0)
+							);
+		application.GetSystem()->Add(mfence12);
+		mfence12->SetBodyFixed(true);
+		mfence12->SetFriction(0.1);
+
+		ChSharedPtr<ChBody> mfence13 = create_box_collision_shape(
+							ChVector<>(xnozzle+xnozzlesize/2+fence_width/2,ynozzlesize/2+ynozzle+binbase,0),
+							ChVector<>(fence_width,ynozzlesize,znozzlesize+2*fence_width),
+							ChQuaternion<>(0,0,1,0)
+							);
+		application.GetSystem()->Add(mfence13);
+		mfence13->SetBodyFixed(true);
+		mfence13->SetFriction(0.1);
+
+		ChSharedPtr<ChBody> mfence14 = create_box_collision_shape(
+							ChVector<>(xnozzle,ynozzlesize/2+ynozzle+binbase,znozzlesize/2+fence_width/2),
+							ChVector<>(xnozzlesize,ynozzlesize,fence_width),
+							ChQuaternion<>(0,1,0,0)
+							);
+		application.GetSystem()->Add(mfence14);
+		mfence14->SetBodyFixed(true);
+		mfence14->SetFriction(0.1);
+
+		ChSharedPtr<ChBody> mfence15 = create_box_collision_shape(
+							ChVector<>(xnozzle,ynozzlesize/2+ynozzle+binbase,-znozzlesize/2-fence_width/2),
+							ChVector<>(xnozzlesize,ynozzlesize,fence_width),
+							ChQuaternion<>(0,1,0,0)
+							);
+		application.GetSystem()->Add(mfence15);
+		mfence15->SetBodyFixed(true);
+		mfence15->SetFriction(0.1);
+	}
 	
-/*
-	// HOW TO IMPORT A SOLIDWORK MODEL ***ALEX***
+
+	// IMPORT A SOLIDWORK MODEL 
 
 	// 1) create the Python engine. This is necessary in order to parse the files that 
 	// have been saved using the SolidWorks add-in for Chrono::Engine.
@@ -1456,19 +1517,64 @@ int main(int argc, char* argv[])
 	// 2) loads the .py file (as saved from SolidWorks) and fill the system.
 	try
 	{
-		my_python.ImportSolidWorksSystem("../objects/cad_conveyor", mphysicalSystem);  // note, don't type the .py suffic in filename..
+		my_python.ImportSolidWorksSystem("../CAD_conveyor/conveyor_Ida", mphysicalSystem);  // note, don't type the .py suffix in filename..
 	}
 	catch (ChException myerror)
 	{
 		GetLog() << myerror.what();
 	}
 
-	// 3) this is needed for rendering in Irrlicht 3D views:
-	application.AssetBindAll();
-	application.AssetUpdateAll();
-	application.AddShadowAll();
 
-*/
+	// 3) fetch coordinate values and objects from what was imported from CAD
+
+	//ChCoordsys<> conveyor_csys = CSYSNORM;
+
+	ChSharedPtr<ChMarker> my_marker = mphysicalSystem.SearchMarker("centro_nastro");
+	if (my_marker.IsNull())
+		GetLog() << "Error: cannot find centro_nastro marker from its name in the C::E system! \n";
+	else
+		conveyor_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+
+	
+	my_marker = mphysicalSystem.SearchMarker("centro_nozzle");
+	if (my_marker.IsNull())
+		GetLog() << "Error: cannot find centro_nozzle marker from its name in the C::E system! \n";
+	else
+		nozzle_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+
+	
+	my_marker = mphysicalSystem.SearchMarker("centro_cilindro");
+	if (my_marker.IsNull())
+		GetLog() << "Error: cannot find centro_cilindro marker from its name in the C::E system! \n";
+	else
+		drum_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+		
+		// fetch mrigidBodyDrum pointer! will be used for changing the friction, the collision family, and later to create the motor
+	ChSharedPtr<ChBodyAuxRef> mrigidBodyDrum = mphysicalSystem.Search("drum-1");  
+	if (mrigidBodyDrum.IsNull())
+		GetLog() << "ERROR: cannot find drum-1 from its name in the C::E system! ! \n";
+	else
+	{
+		mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
+		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
+		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+		mrigidBodyDrum->SetFriction(0.9f);
+	}
+	
+
+	
+
+	//
+	// Create a truss (absolute fixed reference body, for connecting the rotating cyl.)
+	//
+
+	ChSharedPtr<ChBody> mtruss(new ChBody);
+	mtruss->SetBodyFixed(true);
+
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mtruss);
+
+
 
 	//
 	// Create the conveyor belt (this is a pure Chrono::Engine object, 
@@ -1482,7 +1588,10 @@ int main(int argc, char* argv[])
     mconveyor->SetRollingFriction(0.01);
 	mconveyor->SetConveyorSpeed(STATIC_speed);
 
-	mconveyor->SetPos( ChVector<>(0, 0-conv_thick, 0) );
+	// vecchio..	mconveyor->SetPos( ChVector<>(0, 0-conv_thick, 0) );
+	mconveyor->SetPos( conveyor_csys.pos );
+	mconveyor->ConcatenatePreTransformation(ChFrameMoving<>(ChVector<>(0, -conv_thick/2., 0)));
+
 
 	mconveyor->GetPlate()->GetCollisionModel()->SetFamily(2); // note the additional  ->GetPlate()
     mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
@@ -1500,76 +1609,72 @@ int main(int argc, char* argv[])
 	// Create a collision shape for the rotating drum (end of the belt)
 	//
 
-	double drummass = 100;
-	double Ixx = 25;
-	double drumradius = 0.114; 
-	ChSharedPtr<ChBody> mrigidBodyDrum(new ChBody);
+//	ChSharedPtr<ChBody> mrigidBodyDrum;
+	double drumradius = drumdiameter * 0.5;
+	//ChCoordsys<> drum_axis_coordsys(ChCoordsys<>(ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0)));
 
-	mrigidBodyDrum->SetPos(ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0));
-	mrigidBodyDrum->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
-	mrigidBodyDrum->SetMass(drummass);
-	mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
-	mrigidBodyDrum->SetFriction(0.9f); 
-	mrigidBodyDrum->SetRollingFriction(0.01);
-	
-	// Define a collision shape 
-	mrigidBodyDrum->GetCollisionModel()->ClearModel();
-	mrigidBodyDrum->GetCollisionModel()->AddCylinder(drumradius,drumradius,conveyor_width);
-	mrigidBodyDrum->GetCollisionModel()->BuildModel();
-	mrigidBodyDrum->SetCollide(true);
+	if (create_programmatically_drum)
+	{
+		double drummass = 100;
+		double Ixx = 25;
+		mrigidBodyDrum = ChSharedPtr<ChBody>(new ChBody);
 
-	mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
-	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
-	mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+		mrigidBodyDrum->SetPos(drum_csys.pos);
+		mrigidBodyDrum->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
+		mrigidBodyDrum->SetMass(drummass);
+		mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
+		mrigidBodyDrum->SetFriction(0.9f); 
+		mrigidBodyDrum->SetRollingFriction(0.01);
+		
+		// Define a collision shape 
+		mrigidBodyDrum->GetCollisionModel()->ClearModel();
+		mrigidBodyDrum->GetCollisionModel()->AddCylinder(drumradius,drumradius,conveyor_width);
+		mrigidBodyDrum->GetCollisionModel()->BuildModel();
+		mrigidBodyDrum->SetCollide(true);
 
-		// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mrigidBodyDrum);
+		mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
+		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
+		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
 
-
-	// Attach a visualization shape asset. 
-	ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
-	mcyl->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
-	mcyl->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
-	mcyl->GetCylinderGeometry().rad = drumradius;
-	mrigidBodyDrum->AddAsset(mcyl);
-	
-	
-
-	// Optional: attach a 'blue' texture to easily recognize metal stuff in 3d view
-	ChSharedPtr<ChTexture> mtexturedrum(new ChTexture);
-	mtexturedrum->SetTextureFilename("../objects/bluwhite.png");
-	mrigidBodyDrum->AddAsset(mtexturedrum);
+			// Finally, do not forget to add the body to the system:
+		application.GetSystem()->Add(mrigidBodyDrum);
 
 
+		// Attach a visualization shape asset. 
+		ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
+		mcyl->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
+		mcyl->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
+		mcyl->GetCylinderGeometry().rad = drumradius;
+		mrigidBodyDrum->AddAsset(mcyl);
+		
+		
 
-	//
-	// Create a truss (absolute fixed reference body, for connecting the rotating cyl.)
-	//
-
-	ChSharedPtr<ChBody> mtruss(new ChBody);
-	mtruss->SetBodyFixed(true);
-
-	// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mtruss);
-
+		// Optional: attach a 'blue' texture to easily recognize metal stuff in 3d view
+		ChSharedPtr<ChTexture> mtexturedrum(new ChTexture);
+		mtexturedrum->SetTextureFilename("../objects/bluwhite.png");
+		mrigidBodyDrum->AddAsset(mtexturedrum);
+	}
 
 
 	// 
 	// Create a motor constraint between the cylinder and the truss
 	//
 
-	ChCoordsys<> drum_axis_coordsys(ChCoordsys<>(ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0)));
+	ChSharedPtr<ChLinkEngine> mengine;
 
-	ChSharedPtr<ChLinkEngine> mengine(new ChLinkEngine);
-	mengine->Initialize(mrigidBodyDrum, mtruss, drum_axis_coordsys);
+	if (!mrigidBodyDrum.IsNull())
+	{
+		mengine = ChSharedPtr<ChLinkEngine>(new ChLinkEngine);
+		ChSharedPtr<ChBody> mdrum(mrigidBodyDrum);
+		mengine->Initialize(mdrum, mtruss, drum_csys);
 
-	mengine->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
-	if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
-		mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+		mengine->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
+		if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
+			mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
 
-	// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mengine);
-
+		// Finally, do not forget to add the body to the system:
+		application.GetSystem()->Add(mengine);
+	}
 
 
 
@@ -1584,9 +1689,6 @@ int main(int argc, char* argv[])
 												ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0), 
 												ChVector<>(elecradius*2,conveyor_width,elecradius*2));
 	mElec->GetBody()->SetBodyFixed(true);
-    //mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);  not needed
-	//mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-	//mElec->GetBody()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
 
 
 	
@@ -1594,77 +1696,70 @@ int main(int argc, char* argv[])
 	// Create a collision shape for the rotating brush 
 	//
 
-	double brushmass = 25;
-	double Ixx2 = 6.25;
-	double brushradius = 0.02; 
-	ChSharedPtr<ChBody> mrigidBodyBrush(new ChBody);
+	if (create_programmatically_drum)
+	{
+		double brushmass = 25;
+		double Ixx2 = 6.25;
+		double brushradius = 0.02; 
+		ChSharedPtr<ChBody> mrigidBodyBrush(new ChBody);
 
-	mrigidBodyBrush->SetPos(ChVector<>(conveyor_length/2-drumradius-brushradius, -drumradius-brushradius-conv_thick/2,0));//***************************************************
-	mrigidBodyBrush->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
-	mrigidBodyBrush->SetMass(brushmass);
-	mrigidBodyBrush->SetInertiaXX(ChVector<>(Ixx2,Ixx2,Ixx2));
-	mrigidBodyBrush->SetFriction(0.9f);
-	mrigidBodyBrush->SetRollingFriction(0.01);
+		mrigidBodyBrush->SetPos(ChVector<>(conveyor_length/2-drumradius-brushradius, -drumradius-brushradius-conv_thick/2,0));//***************************************************
+		mrigidBodyBrush->SetRot(ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0) );
+		mrigidBodyBrush->SetMass(brushmass);
+		mrigidBodyBrush->SetInertiaXX(ChVector<>(Ixx2,Ixx2,Ixx2));
+		mrigidBodyBrush->SetFriction(0.9f);
+		mrigidBodyBrush->SetRollingFriction(0.01);
 
-	// Define a collision shape 
-	mrigidBodyBrush->GetCollisionModel()->ClearModel();
-	mrigidBodyBrush->GetCollisionModel()->AddCylinder(brushradius,brushradius,conveyor_width);
-	mrigidBodyBrush->GetCollisionModel()->BuildModel();
-	mrigidBodyBrush->SetCollide(true);
+		// Define a collision shape 
+		mrigidBodyBrush->GetCollisionModel()->ClearModel();
+		mrigidBodyBrush->GetCollisionModel()->AddCylinder(brushradius,brushradius,conveyor_width);
+		mrigidBodyBrush->GetCollisionModel()->BuildModel();
+		mrigidBodyBrush->SetCollide(true);
 
-	mrigidBodyBrush->GetCollisionModel()->SetFamily(1);
-	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-	mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
+		mrigidBodyBrush->GetCollisionModel()->SetFamily(1);
+		mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
+		mrigidBodyBrush->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
 
-	// Attach a visualization shape asset. 
-	ChSharedPtr<ChCylinderShape> mcyl2(new ChCylinderShape);
-	mcyl2->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
-	mcyl2->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
-	mcyl2->GetCylinderGeometry().rad = brushradius;
-	mrigidBodyBrush->AddAsset(mcyl2);
+		// Attach a visualization shape asset. 
+		ChSharedPtr<ChCylinderShape> mcyl2(new ChCylinderShape);
+		mcyl2->GetCylinderGeometry().p1 = ChVector<>(0 , -0.5*conveyor_width, 0);
+		mcyl2->GetCylinderGeometry().p2 = ChVector<>(0 ,  0.5*conveyor_width, 0);
+		mcyl2->GetCylinderGeometry().rad = brushradius;
+		mrigidBodyBrush->AddAsset(mcyl2);
 
-	// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mrigidBodyBrush);
-
-
-	// Optional: attach a 'pink' texture to easily recognize metal stuff in 3d view
-	ChSharedPtr<ChTexture> mtexturebrush(new ChTexture);
-	mtexturebrush->SetTextureFilename("../objects/pinkwhite.png");
-	mrigidBodyBrush->AddAsset(mtexturebrush);
+		// Finally, do not forget to add the body to the system:
+		application.GetSystem()->Add(mrigidBodyBrush);
 
 
-	//
-	// Create a truss (absolute fixed reference body, for connecting the rotating cyl.)
-	//
+		// Optional: attach a 'pink' texture to easily recognize metal stuff in 3d view
+		ChSharedPtr<ChTexture> mtexturebrush(new ChTexture);
+		mtexturebrush->SetTextureFilename("../objects/pinkwhite.png");
+		mrigidBodyBrush->AddAsset(mtexturebrush);
 
-	ChSharedPtr<ChBody> mtruss2(new ChBody);
-	mtruss2->SetBodyFixed(true);
+		// 
+		// Create a motor constraint between the brush and the truss
+		//
 
-	// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mtruss2);
+		ChCoordsys<> drum_axis_coordsys2(ChCoordsys<>(ChVector<>(conveyor_length/2-drumradius-brushradius, -drumradius-brushradius-conv_thick/2,0))); 
+
+		ChSharedPtr<ChLinkEngine> mengine2(new ChLinkEngine);
+		mengine2->Initialize(mrigidBodyBrush, mtruss, drum_axis_coordsys2);
+
+		mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
+		if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine2->Get_spe_funct()))
+			mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+
+		// Finally, do not forget to add the body to the system:
+		application.GetSystem()->Add(mengine2); //********** ida
+	}
 
 
 
-	// 
-	// Create a motor constraint between the cylinder and the truss
-	//
 
-	ChCoordsys<> drum_axis_coordsys2(ChCoordsys<>(ChVector<>(conveyor_length/2-drumradius-brushradius, -drumradius-brushradius-conv_thick/2,0))); 
-
-	ChSharedPtr<ChLinkEngine> mengine2(new ChLinkEngine);
-	mengine2->Initialize(mrigidBodyBrush, mtruss2, drum_axis_coordsys2);
-
-	mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
-	if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine2->Get_spe_funct()))
-		mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
-
-	// Finally, do not forget to add the body to the system:
-	application.GetSystem()->Add(mengine2); //********** ida
-
-	
 	//
 	// Create an (optional) exporter to POVray 
 	// 
+
 	ChPovRay pov_exporter = ChPovRay(&mphysicalSystem);
 
 	if (save_POV_screenshots)
@@ -1767,7 +1862,7 @@ int main(int argc, char* argv[])
 			totframes++;
 
 			apply_forces (	&mphysicalSystem,		// contains all bodies
-							drum_axis_coordsys, // pos and rotation of axis of drum (not rotating reference!)
+							drum_csys,		 // pos and rotation of axis of drum (not rotating reference!)
 							drumspeed,		 // speed of drum
 							numberofpoles,	 // number of couples of poles
 							intensity,		 // intensity of the magnetic field
@@ -1784,7 +1879,7 @@ int main(int argc, char* argv[])
 
 			fall_point (	application,
 							&mphysicalSystem,		// contains all bodies
-							mrigidBodyDrum->GetFrame_REF_to_abs().GetCoord(), // pos and rotation of drum 
+							drum_csys,  // pos and rotation of drum  (not rotating reference!)
 							threshold);
 
 			if (receiver.checkbox_plotforces->isChecked())
@@ -1795,7 +1890,12 @@ int main(int argc, char* argv[])
 
 			
 			// Continuosly create debris that fall on the conveyor belt
-			create_debris(application.GetTimestep(), STATIC_flow, *application.GetSystem(), &application, &pov_exporter);
+			create_debris(	application.GetTimestep(), 
+							STATIC_flow, 
+							nozzle_csys,
+							*application.GetSystem(), 
+							&application, 
+							&pov_exporter);
 
 			// Limit the max age (in seconds) of debris particles on the scene, 
 			// deleting the oldest ones, for performance
@@ -1804,7 +1904,8 @@ int main(int argc, char* argv[])
 			// Maybe the user played with the slider and changed STATIC_speed...
 		 	mconveyor->SetConveyorSpeed(STATIC_speed);
 			// ..also for rotating drum:
-			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
+			if (!mengine.IsNull())
+			  if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
 				mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
 
 			// update the assets containing the trajectories, if any
