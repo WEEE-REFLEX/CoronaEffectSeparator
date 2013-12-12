@@ -25,7 +25,7 @@
 #include <irrlicht.h>
 #include <fstream>
 #include "unit_PYTHON/ChPython.h"
-#include "unit_POSTPROCESS/ChPovRay.h" 
+#include "unit_POSTPROCESS/ChPovRay.h"
 
 // Use the namespace of Chrono
 
@@ -126,7 +126,7 @@ int totframes = 0;
 	
 bool init_particle_speed = true;
 
-double particle_magnification = 5;
+double particle_magnification = 3; // for larger visualization of particle
 
 bool create_programmatically_bins    = false;
 bool create_programmatically_nozzle  = false;
@@ -311,9 +311,6 @@ private:
 
 
 
-
-
-
 // Define a MyEventReceiver class which will be used to manage input
 // from the GUI graphical user interface
 
@@ -338,9 +335,9 @@ public:
 				scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(
 								true, rect<s32>(560, 40, 700, 40+20), 0, 102);
 				scrollbar_speed->setMax(100); 
-				scrollbar_speed->setPos(100);
+				scrollbar_speed->setPos(72);
 				text_speed = application->GetIGUIEnvironment()->addStaticText(
-								L"Conveyor speed [m/s]:", rect<s32>(710,40,800,40+20), false);
+								L"Conv.vel. [m/s]:", rect<s32>(710,40,800,40+20), false);
 
 				// ..add GUI checkmark to enable plotting forces
 				checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,65+20),
@@ -375,7 +372,9 @@ public:
 							if (id == 102) // id of 'speed' slider..
 							{
 								s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-								STATIC_speed = (((double)pos)/100)*2;
+								STATIC_speed = 1.0* (((double)pos)/100);
+								char message[50]; sprintf(message,"Conv.vel. %2.2f [m/s]", STATIC_speed);
+								text_speed->setText(core::stringw(message).c_str());
 							}
 					break;
 					}
@@ -469,7 +468,7 @@ void create_debris(double dt, double particles_second,
 	double box_fraction = 0;//0.4; // 40% cylinders
 	double cyl_fraction = 1-box_fraction-sph_fraction;
 
-	double sphrad = 0.6e-3 + (ChRandom()-0.5)*(0.6e-3);
+	double sphrad = 0.6e-3 + (ChRandom()-0.5)*(0.6e-3); 
 	double cylhei = 0.035;
 	double cylrad = sphrad;
 	double cylmass = CH_C_PI*pow(cylrad,2)*cylhei* 1.0;  // now with default 1.0 density
@@ -933,6 +932,10 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 
 				electricproperties->ElectricForce = 0.832 * electricproperties->chargeM * vE;
 
+				// switch off electric forces if too out-of-plane
+				if ((mrelpos.z > conveyor_width*0.5) || (mrelpos.z < -conveyor_width*0.5))
+					ElectricForce = 0; 
+
 				abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
 
 
@@ -968,6 +971,9 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				electricproperties->ElectricImageForce.z = 0;	
 						
 				
+				// switch off electric forces if too out-of-plane
+				if ((mrelpos.z > conveyor_width*0.5) || (mrelpos.z < -conveyor_width*0.5))
+					ElectricImageForce = 0; 
 
 
 				abody->Accumulate_force(ElectricImageForce, abody->GetPos(), false);
@@ -1307,9 +1313,8 @@ int main(int argc, char* argv[])
 
 
 	// Set small collision envelopes for objects that will be created from now on..
-	ChCollisionModel::SetDefaultSuggestedEnvelope(0.003);
-	ChCollisionModel::SetDefaultSuggestedMargin  (0.002);
-
+	ChCollisionModel::SetDefaultSuggestedEnvelope(0.002);
+	ChCollisionModel::SetDefaultSuggestedMargin  (0.001);
 
 
 	// Create conveyor fences
@@ -1558,7 +1563,7 @@ int main(int argc, char* argv[])
 		mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
 		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-		mrigidBodyDrum->SetFriction(0.9f);
+		mrigidBodyDrum->SetFriction(0.9f); 
 	}
 	
 
@@ -1855,10 +1860,11 @@ int main(int argc, char* argv[])
 
 		application.DrawAll();
 
+		application.DoStep();
+
 		if (!application.GetPaused())
 		{ 
-			application.DoStep();
-
+			
 			totframes++;
 
 			apply_forces (	&mphysicalSystem,		// contains all bodies
