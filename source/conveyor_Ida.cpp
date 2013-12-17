@@ -20,8 +20,9 @@
 #include "irrlicht_interface/CHbodySceneNode.h"
 #include "irrlicht_interface/CHbodySceneNodeTools.h" 
 #include "irrlicht_interface/CHirrApp.h"
-#include "core/CHrealtimeStep.h"
-#include "core/CHmath.h"
+#include "core/ChRealtimeStep.h"
+#include "core/ChMath.h"
+#include "core/ChDistribution.h"
 #include <irrlicht.h>
 #include <fstream>
 #include "unit_PYTHON/ChPython.h"
@@ -198,111 +199,6 @@ public:
 	{
 		max_points = 80;
 	}
-};
-
-
-
-/// Class that can be used to generate sample numbers according to a 
-/// probability distribution. Probability distribution is defined with x,y points,
-/// at least a dozen of pairs to be more precise in the reconstruction of probability.
-
-class ChRandomDistribution
-{
-public:
-
-		/// Create an object that can be used to generate sample numbers according to a 
-		/// probability distribution. The probability distribution is a curve represented
-		/// by simplified x,y pairs of points. The integral of the probability curve
-		/// must be unit, i.e normalized (but if not, a normalization will be enforced)
-		/// Note: too few points means approximate results, but too many points might give a 
-		/// small performance overhead when calling GetRandom().
-	ChRandomDistribution (ChMatrix<>& mx, ChMatrix<>& my)
-	{
-	
-		if (mx.GetRows() != my.GetRows())
-			throw ChException("Probability curve must have same number of rows in abscysse and ordinates");
-		if ((mx.GetColumns() != 1) || (my.GetColumns() != 1))
-			throw ChException("Probability curve must have column-vectors as input");
-
-		x = new ChMatrixDynamic<>;
-		y = new ChMatrixDynamic<>;
-		cdf_x = new ChMatrixDynamic<>;
-		cdf_y = new ChMatrixDynamic<>;
-
-		*x = mx;
-		*y = my;
-
-		*cdf_x = mx;
-		*cdf_y = my;
-
-			// compute CDF
-		double integral = 0;
-		for (int i = 0; i< x->GetRows()-1; i++)
-		{
-			integral += 0.5*( (*y)(i) + (*y)(i+1) ) * ( (*x)(i+1) - (*x)(i) );
-			(*cdf_y)(i) = integral;
-			(*cdf_x)(i) = 0.5* ( (*x)(i+1) + (*x)(i) );
-		}
-			// normalize if P(x) had not unit integral
-		double totintegral = (*cdf_y)(x->GetRows()-2);
-		if (totintegral != 1.0)
-		{
-			for (int i = 0; i< x->GetRows()-1; i++)
-			{
-				(*cdf_y)(i) *= 1./totintegral;
-			}
-		}
-		(*cdf_x)(x->GetRows()-1) = (*x)(x->GetRows()-1);
-		(*cdf_y)(x->GetRows()-1) = 1.0;
-		
-	}
-
-	~ChRandomDistribution()
-	{
-		delete x;
-		delete y;
-		delete cdf_x;
-		delete cdf_y;
-	}
-
-		/// Compute a random value whose probability is the probability curve that has 
-		/// been entered with x,y points during the creation of this object.
-	double GetRandom()
-	{
-		double mx1 =  (*x)(0);
-		double mx2 =  (*cdf_x)(0);
-		double my1 =  0;
-		double my2 =  (*cdf_y)(0);
-
-		double rand = ChRandom();
-		for (int i = 0; i< x->GetRows()-1; i++)
-		{
-			if (( rand <= (*cdf_y)(i+1) ) &&
-				( rand >  (*cdf_y)(i)   ) )
-			{
-				mx1 = (*cdf_x)(i);
-				mx2 = (*cdf_x)(i+1);
-				my1 = (*cdf_y)(i);
-				my2 = (*cdf_y)(i+1);
-				break;
-			}
-		}
-		// linear interp
-		double val = mx1 +  ((rand - my1)/(my2-my1)) * (mx2-mx1);
-		return val;
-	}
-
-	ChMatrix<>* GetProbabilityXpoints() {return x;}
-	ChMatrix<>* GetProbabilityYpoints() {return y;}
-	ChMatrix<>* GetProbabilityCDFcumulativeX() {return cdf_x;}
-	ChMatrix<>* GetProbabilityCDFcumulativeY() {return cdf_y;}
-
-private:
-	ChMatrix<>* x;
-	ChMatrix<>* y;
-
-	ChMatrix<>* cdf_x;
-	ChMatrix<>* cdf_y;
 };
 
 
