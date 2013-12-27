@@ -82,16 +82,16 @@ MESSAGE( STATUS " runtime dir debug: " ${MY_RUNTIME_DIR_DEBUG} )
 ADD_CUSTOM_COMMAND(
 	TARGET conveyor
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_DEBUG}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Debug/"
-	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CH_BINDIR_DEBUG}/Irrlicht.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/Irrlicht.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 		
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_RELEASE}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Release/"

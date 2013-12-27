@@ -55,7 +55,7 @@ double STATIC_speed = 0.72; //[m/s]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
-const double drumspeed = 6.28; //[rad/s]
+const double drumspeed = 60*((2*CH_C_PI)/60); //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
 const double intensity = 0.32; 
@@ -113,6 +113,9 @@ int myid = 1;
 ChCoordsys<> conveyor_csys( ChVector<>(0, 0-conv_thick, 0) ) ; // default position
 ChCoordsys<> drum_csys    ( ChVector<>(conveyor_length/2, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
 ChCoordsys<> nozzle_csys  ( ChVector<>(xnozzle, ynozzle, 0) ); // default position
+ChCoordsys<> Splitter1_csys  ( ChVector<>(conveyor_length/2+0.2, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
+ChCoordsys<> Splitter2_csys  ( ChVector<>(conveyor_length/2+0.4, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
+ChCoordsys<> Spazzola_csys  ( ChVector<>(conveyor_length/2-0.10, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
 
 
 // set as true for saving log files each n frames
@@ -1430,11 +1433,35 @@ int main(int argc, char* argv[])
 
 	//ChCoordsys<> conveyor_csys = CSYSNORM;
 
+
+
 	ChSharedPtr<ChMarker> my_marker = mphysicalSystem.SearchMarker("centro_nastro");
 	if (my_marker.IsNull())
 		GetLog() << "Error: cannot find centro_nastro marker from its name in the C::E system! \n";
 	else
 		conveyor_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+		
+	//****Ida
+
+	my_marker = mphysicalSystem.SearchMarker("Splitter1");
+	if (my_marker.IsNull())
+		GetLog() << "Error: cannot find Splitter1 marker from its name in the C::E system! \n";
+	else
+		Splitter1_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+
+	my_marker = mphysicalSystem.SearchMarker("Splitter2");
+	if (my_marker.IsNull())
+		GetLog() << "Error: cannot find Splitter2 marker from its name in the C::E system! \n";
+	else
+		Splitter2_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+
+	my_marker = mphysicalSystem.SearchMarker("Spazzola");
+	if (my_marker.IsNull())
+		GetLog() << "Error: cannot find Spazzola marker from its name in the C::E system! \n";
+	else
+		Spazzola_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
+
+	//***Ida
 
 	
 	my_marker = mphysicalSystem.SearchMarker("centro_nozzle");
@@ -1462,7 +1489,45 @@ int main(int argc, char* argv[])
 		mrigidBodyDrum->SetFriction(0.9f); 
 	}
 	
+    //***Ida
 
+	ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter1 = mphysicalSystem.Search("Splitter-10");  
+	if (mrigidBodySplitter1.IsNull())
+		GetLog() << "ERROR: cannot find Splitter-10 from its name in the C::E system! ! \n";
+	else
+	{
+		mrigidBodySplitter1->SetBodyFixed(true);
+		mrigidBodySplitter1->GetCollisionModel()->SetFamily(3); // rivedere 
+		mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
+		mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
+		mrigidBodySplitter1->SetFriction(0.9f); 
+	}
+
+	ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1");  
+	if (mrigidBodySplitter2.IsNull())
+		GetLog() << "ERROR: cannot find Splitter2-1 from its name in the C::E system! ! \n";
+	else
+	{
+		mrigidBodySplitter2->SetBodyFixed(true);
+		mrigidBodySplitter2->GetCollisionModel()->SetFamily(3);// rivedere
+		mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
+		mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
+		mrigidBodySplitter2->SetFriction(0.9f); 
+	}
+
+	ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1");  
+	if (mrigidBodySpazzola.IsNull())
+		GetLog() << "ERROR: cannot find Spazzola-1 from its name in the C::E system! ! \n";
+	else
+	{
+		mrigidBodySpazzola->GetCollisionModel()->SetFamily(1); // rivedere
+		mrigidBodySpazzola->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
+		mrigidBodySpazzola->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);// rivedere
+		mrigidBodySpazzola->SetFriction(0.9f);
+				
+	}
+
+	//***Ida
 	
 
 	//
@@ -1474,8 +1539,16 @@ int main(int argc, char* argv[])
 
 	// Finally, do not forget to add the body to the system:
 	application.GetSystem()->Add(mtruss);
+    
+	//**Ida
 
+    ChSharedPtr<ChBody> mtruss2(new ChBody);
+	mtruss2->SetBodyFixed(true);
 
+	// Finally, do not forget to add the body to the system:
+	application.GetSystem()->Add(mtruss2);
+
+	//***Ida
 
 	//
 	// Create the conveyor belt (this is a pure Chrono::Engine object, 
@@ -1577,11 +1650,33 @@ int main(int argc, char* argv[])
 		application.GetSystem()->Add(mengine);
 	}
 
+	//***Ida
+
+	ChSharedPtr<ChLinkEngine> mengine2;
+
+	if (!mrigidBodySpazzola.IsNull())
+	{
+		mengine2 = ChSharedPtr<ChLinkEngine>(new ChLinkEngine);
+		ChSharedPtr<ChBody> mSpazzola(mrigidBodySpazzola);
+		mengine2->Initialize(mSpazzola, mtruss2, Spazzola_csys);
+
+		mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
+		if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine2->Get_spe_funct()))
+			mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+
+		// Finally, do not forget to add the body to the system:
+		application.GetSystem()->Add(mengine2);
+
+
+	}
+    
+	//***Ida
+
 
 
 	// Electrode 
 
-	double elecradius = 0.019; //***************ida
+	/*double elecradius = 0.019; //***************ida
 
 	ChBodySceneNode* mElec = (ChBodySceneNode*)addChBodySceneNode_easyCylinder(
 		                                         application.GetSystem(), application.GetSceneManager(),
@@ -1589,11 +1684,10 @@ int main(int argc, char* argv[])
 												ChVector<>(4*(drumradius+(L*cos(alpha)-drumradius)),drumradius+(sin(alpha)*L-drumradius),0),
 												ChQuaternion<> (pow(2,0.5)/2,pow(2,0.5)/2,0,0), 
 												ChVector<>(elecradius*2,conveyor_width,elecradius*2));
-	mElec->GetBody()->SetBodyFixed(true);
-
-
-	
+	mElec->GetBody()->SetBodyFixed(true);*/
+    
 	//********************************************************************** ida
+
 	// Create a collision shape for the rotating brush 
 	//
 
