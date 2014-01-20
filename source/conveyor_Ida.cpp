@@ -59,7 +59,7 @@ const double drumspeed = 60*((2*CH_C_PI)/60); //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
 const double intensity = 0.32; 
-const double drumdiameter = 0.228;
+const double drumdiameter = 0.320;
 const double electrodediameter = 0.038;
 const double U = 25000; // supplied high-voltage [v]
 const double L = 0.21; //certer distance of rotating roll electrode and electrostatic pole *****ida
@@ -102,7 +102,6 @@ const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato a
 
 const double densityMetal = 8900;//1820;
 const double densityPlastic = 900;
-
 int myid = 1;
 
 // Coordinate systems with position and rotation of important items in the 
@@ -285,12 +284,12 @@ public:
 					switch (event.KeyInput.Key)
 					{
 					case irr::KEY_F1:	// camera will point to drum
-						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0,0.2,0.4) ) );
+						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0,0.4,0.4) ) );
 						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos ) );
 						application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
 						return true;
 					case irr::KEY_F2:	// camera will point to nozzle
-						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( nozzle_csys.pos + ChVector<>(0.2,0.2,0.4) ) );
+						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( nozzle_csys.pos + ChVector<>(0.2,0.3,0.4) ) );
 						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( nozzle_csys.pos ) );
 						application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
 						return true;
