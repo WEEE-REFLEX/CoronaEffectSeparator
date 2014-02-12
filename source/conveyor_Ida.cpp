@@ -48,27 +48,27 @@ using namespace std;
 // programming practice, but enough for quick tests)
 
 
-double STATIC_flow = 1000; 
-double STATIC_speed = 0.72; //[m/s]
+double STATIC_flow = 500; 
+double STATIC_speed = 0.160*(45*((2*CH_C_PI)/60)); //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
-const double drumspeed = 60*((2*CH_C_PI)/60); //[rad/s]
+const double drumspeed = 45*((2*CH_C_PI)/60); //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
-const double intensity = 0.32; 
+const double intensity = 0.32;
 const double drumdiameter = 0.320;
 const double electrodediameter = 0.038;
-const double U = 25000; // supplied high-voltage [v]
-const double L = 0.21; //certer distance of rotating roll electrode and electrostatic pole *****ida
+const double U = 30000; // supplied high-voltage [v]
+const double L = 0.267; //certer distance of rotating roll electrode and electrostatic pole *****ida
 const double alpha = (CH_C_PI/180)*30; //angle of horizontal line and electrodes center line *****ida
 const double h1 = (pow(L,2)+pow((drumdiameter/2),2)-((electrodediameter/2),2))/(2*L); //analytical parameter****ida
 const double h2 = (pow(L,2)-pow((drumdiameter/2),2)+((electrodediameter/2),2))/(2*L);//analytical parameter****ida
 const double j = sqrt(pow(h1,2)-pow((drumdiameter/2),2));//analytical parameter****ida
 const double f = U/log(((h1+j-(drumdiameter/2))*(h2+j-(electrodediameter/2)))/((drumdiameter/2)+j-h1)*((electrodediameter/2)+j-h2));//analytical parameter****ida
-
+double sphrad = 0.38e-3;
 
 // conveyor constant
 const double conveyor_length=0.400;//***ALEX, from CAD
@@ -94,14 +94,14 @@ const double x_splitter3=0;
 const double splitter_width=0.01;
 const double splitter_height=0.4;
 // hopper constant
-const double xnozzlesize = 0.2;
+const double xnozzlesize = 0.1;//0.2;
 const double znozzlesize = 0.182; //**from CAD, nozzle width
-const double ynozzlesize = 0.5;
+const double ynozzlesize = 0.1;//0.5;
 const double ynozzle = 0.01;
 const double xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato avanti****ida
 
-const double densityMetal = 8900;//1820;
-const double densityPlastic = 900;
+const double densityMetal =  8400; // sn-pb //8900;//rame//1820 vecchia densità;
+const double densityPlastic = 946;// polipropilene //900 vecchia densità;
 int myid = 1;
 
 // Coordinate systems with position and rotation of important items in the 
@@ -366,7 +366,8 @@ void create_debris(double dt, double particles_second,
 	double box_fraction = 0;//0.4; // 40% cylinders
 	double cyl_fraction = 1-box_fraction-sph_fraction;
 
-	double sphrad = 0.6e-3 + (ChRandom()-0.5)*(0.6e-3); 
+	//double sphrad = 0.6e-3 + (ChRandom()-0.5)*(0.6e-3); vecchia distribuzione
+	//double sphrad = 0.5e-3; messa come variabile globale per esportazione e postprocessing
 	double cylhei = 0.035;
 	double cylrad = sphrad;
 	double cylmass = CH_C_PI*pow(cylrad,2)*cylhei* 1.0;  // now with default 1.0 density
@@ -542,7 +543,7 @@ void create_debris(double dt, double particles_second,
 		{
 			double rand_mat = ChRandom();
 
-			double plastic_fract=0.3;
+			double plastic_fract=0.;
 		
 			if (rand_mat < plastic_fract)
 			{
@@ -555,12 +556,14 @@ void create_debris(double dt, double particles_second,
 				created_body->AddAsset(mtexture);
 
 				// Multiply the default mass & intertia tensor by density (previously assumed =1)
+				
+				created_body->SetDensity(densityPlastic);
 				created_body->SetMass( created_body->GetMass() * ::densityPlastic);
 				created_body->SetInertiaXX( created_body->GetInertiaXX() * ::densityPlastic);
 			}
 			if (rand_mat > plastic_fract)
 			{
-				created_electrical_asset->conductivity = 6670000;
+				created_electrical_asset->conductivity = 6428000;//6670000 conducibilità vecchia;
 				created_electrical_asset->material_type = ElectricParticleProperty::e_mat_metal;
 
 				// Attach a 'blue' texture to easily recognize metal stuff in 3d view
@@ -569,8 +572,9 @@ void create_debris(double dt, double particles_second,
 				created_body->AddAsset(mtexture);
 
 				// Multiply the default mass & intertia tensor by density (previously assumed =1)
+				created_body->SetDensity(densityMetal);
 				created_body->SetMass( created_body->GetMass() * ::densityMetal);
-				created_body->SetInertiaXX( created_body->GetInertiaXX() * ::densityMetal);
+                created_body->SetInertiaXX( created_body->GetInertiaXX() * ::densityMetal);
 			}
 
 
@@ -641,7 +645,8 @@ void create_debris(double dt, double particles_second,
 
 		if (init_particle_speed)
 		{
-			created_body->SetPos_dt(ChVector<>(STATIC_speed, 0,0));
+			created_body->SetPos_dt(ChVector<>(0,0,0));
+			//created_body->SetPos_dt(ChVector<>(STATIC_speed, 0,0));
 		}
 
 	}
@@ -853,10 +858,10 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				// charge the particle? (contact w. drum)
 				if ((distx > 0) && (disty > 0))
 				{
-					electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1500000*(epsilonR/(epsilonR+2)); // charge
-				}
+					electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1000000*(epsilonR/(epsilonR+2)); // charge
+				} //15000000,750000
 				// discharge the particle? (contact w. blade)
-				if ((distx < -(drumdiameter*0.5 - 0.009)) && (disty < -0.009))
+				if (distx < -(drumdiameter*0.5 -0.009) && (disty < -0.009) || sqrt(pow(distx,2)+ pow(disty,2))> (1.05*drumdiameter*0.5))
 				{
 					electricproperties->chargeP = 0; // charge
 				}
@@ -969,7 +974,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 	} // end for() loop on all bodies
 }
  
-// Control on the fall point
+// Control on the fall point*****************************************************************************************
 
  void fall_point (	ChIrrAppInterface& application,
 					ChSystem* msystem,		// contains all bodies
@@ -1023,7 +1028,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				}
 		
 	}
-}
+}//********************************************************************************************************************
 
 
 void draw_forces(ChIrrApp& application, double scalefactor = 1.0)
@@ -1935,7 +1940,7 @@ int main(int argc, char* argv[])
 							{
 								// ok, its a particle!
 								ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
-								double my_cond  = electricproperties->conductivity ; // ..
+								//double my_cond  = electricproperties->conductivity ;
 								ChVector<> my_ElectricForce = electricproperties->ElectricForce;
 								ChVector<> my_ElectricImageForce = electricproperties->ElectricImageForce;
 								ChVector<> my_StokesForce = electricproperties->StokesForce;
@@ -1945,9 +1950,11 @@ int main(int argc, char* argv[])
 												<< abody->GetPos().x << ", "
 												<< abody->GetPos().y << ", "
 												<< abody->GetPos().z << ", "
-												<< my_cond << ", "
-												<< abody->GetMass()<< "\n";
-												//<< abody->GetPos_dt().x << ", "
+												<< abody->GetDensity() << ", "
+												//<< my_cond << ", "
+												<< abody->GetMass()<< ", "
+												<< sphrad << ", ""\n";
+                                                //<< abody->GetPos_dt().x << ", "
 												//<< abody->GetPos_dt().y << ", "
 												//<< abody->GetPos_dt().z << ", "
 												//<< my_StokesForce << ", "
