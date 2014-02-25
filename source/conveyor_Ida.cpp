@@ -48,14 +48,14 @@ using namespace std;
 // programming practice, but enough for quick tests)
 
 
-double STATIC_flow = 500; 
-double STATIC_speed = 0.160*(45*((2*CH_C_PI)/60)); //[m/s]
+double STATIC_flow = 2000;
+double STATIC_speed = 0.160*(70.40*((2*CH_C_PI)/60)); //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
-const double drumspeed = 45*((2*CH_C_PI)/60); //[rad/s]
+const double drumspeed = 70.40*((2*CH_C_PI)/60); //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
 const double intensity = 0.32;
@@ -121,10 +121,10 @@ ChCoordsys<> Spazzola_csys  ( ChVector<>(conveyor_length/2-0.10, -(drumdiameter*
 
 
 // set as true for saving log files each n frames
-bool save_dataset = true;
+bool save_dataset = true; // true;
 bool save_irrlicht_screenshots = false;
 bool save_POV_screenshots = false;
-int saveEachNframes = 10;
+int saveEachNframes = 3;
 
 bool irr_cast_shadows = true;
 
@@ -365,9 +365,9 @@ void create_debris(double dt, double particles_second,
 				   ChPovRay* mpov_exporter)
 {
 
-	double sph_fraction = 1;
+	double sph_fraction = 0.33;
 	double sph2_fraction = 0;
-	double sph3_fraction = 0;
+	double sph3_fraction = 0.67;
 	double box_fraction = 0;
 	double cyl_fraction = 1-box_fraction-(sph_fraction + sph2_fraction + sph3_fraction);
 
@@ -399,8 +399,12 @@ void create_debris(double dt, double particles_second,
 
 		double rand_shape_fract = ChRandom();
 
+		double max_angvel = 12;
 		ChVector<> rand_position = mnozzle_csys.TrasformLocalToParent( ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize, 0, -0.5*znozzlesize+ChRandom()*znozzlesize) ) ;
-
+        ChVector<> rand_velocity =(0.4 + (ChRandom()-0.5)*(0.4), 0,0);
+		ChVector<> rand_angvel =((ChRandom()-0.5)*2*(max_angvel), 
+								 (ChRandom()-0.5)*2*(max_angvel),
+								 (ChRandom()-0.5)*2*(max_angvel));
 		//
 		// 1 ---- Create particle 
 		// 
@@ -411,11 +415,14 @@ void create_debris(double dt, double particles_second,
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
 			mrigidBody->SetPos(rand_position);
+			mrigidBody->SetPos_dt(rand_velocity);
+			mrigidBody->SetWvel_par(rand_angvel);
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.0f); 
+			mrigidBody->SetImpactC(0.75f); 
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
+			
 			       
 			// mrigidBody->SetRollingFriction(0.1);
 			// mrigidBody->SetSpinningFriction(0.1);
@@ -459,10 +466,12 @@ void create_debris(double dt, double particles_second,
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
 			mrigidBody->SetPos(rand_position);
+			mrigidBody->SetPos_dt(rand_velocity);
+			mrigidBody->SetWvel_par(rand_angvel);
 			mrigidBody->SetMass(sphmass2);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia2,sphinertia2,sphinertia2));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.0f); 
+			mrigidBody->SetImpactC(0.75f); 
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 			      
 			// Define a collision shape 
@@ -498,12 +507,14 @@ void create_debris(double dt, double particles_second,
 			ChSharedPtr<ChBody> mrigidBody(new ChBody);
 
 			mrigidBody->SetPos(rand_position);
+			mrigidBody->SetPos_dt(rand_velocity);
+			mrigidBody->SetWvel_par(rand_angvel);
 			mrigidBody->SetMass(sphmass3);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia3,sphinertia3,sphinertia3));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.0f); 
+			mrigidBody->SetImpactC(0.75f); 
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
-			       
+			      
 			// mrigidBody->SetRollingFriction(0.1);
 			// mrigidBody->SetSpinningFriction(0.1);
 
@@ -925,8 +936,12 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				// charge the particle? (contact w. drum)
 				if ((distx > 0) && (disty > 0))
 				{
+					if (electricproperties->chargeM == 0)
+                    {
 					electricproperties->chargeM = 0.666666666666667*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E;
+					electricproperties->chargeM *= (1.0 - 0.3*ChRandom() );
 					
+					}
 				}
 
 				
@@ -957,10 +972,14 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 				// charge the particle? (contact w. drum)
 				if ((distx > 0.04) && (disty > 0))
 				{
-					electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*1000000*(epsilonR/(epsilonR+2)); // charge
+					if (electricproperties->chargeP == 0)
+					{
+						electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*450000*(epsilonR/(epsilonR+2)); // charge
+						electricproperties->chargeP *= (1.0 - 0.3*ChRandom() );
+					}
 				} //15000000,750000
 				// discharge the particle? (contact w. blade)
-				if (distx < -(drumdiameter*0.5 -0.009) && (disty < -0.009) || sqrt(pow(distx,2)+ pow(disty,2))> (1.05*drumdiameter*0.5))
+				if (distx < -(drumdiameter*0.5 -0.009) && (disty > -(drumdiameter*0.5 + 0.009)) || sqrt(pow(distx,2)+ pow(disty,2))> (1.03*drumdiameter*0.5))
 				{
 					electricproperties->chargeP = 0; // charge
 				}
@@ -1702,7 +1721,8 @@ int main(int argc, char* argv[])
 		mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
 		mrigidBodyDrum->SetFriction(0.9f); 
 		mrigidBodyDrum->SetRollingFriction(0.01);
-		
+		mrigidBodyDrum->SetImpactC(0.75f);
+
 		// Define a collision shape 
 		mrigidBodyDrum->GetCollisionModel()->ClearModel();
 		mrigidBodyDrum->GetCollisionModel()->AddCylinder(drumradius,drumradius,conveyor_width);
@@ -1806,7 +1826,7 @@ int main(int argc, char* argv[])
 		mrigidBodyBrush->SetMass(brushmass);
 		mrigidBodyBrush->SetInertiaXX(ChVector<>(Ixx2,Ixx2,Ixx2));
 		mrigidBodyBrush->SetFriction(0.9f);
-		mrigidBodyBrush->SetRollingFriction(0.01);
+		mrigidBodyBrush->SetRollingFriction(0.01f);
 
 		// Define a collision shape 
 		mrigidBodyBrush->GetCollisionModel()->ClearModel();
@@ -1875,7 +1895,7 @@ int main(int argc, char* argv[])
 		pov_exporter.SetPictureFilebase("animPOV/picture");
 
 				// optional: modify the POV default light
-		pov_exporter.SetLight(ChVector<>(1.5f,4.4f,-1.0f), ChColor(0.1,0.1,0.1), false);
+		pov_exporter.SetLight(ChVector<>(1.5f,4.4f,-1.0f), ChColor(0.1f,0.1f,0.1f), false);
 
 		pov_exporter.SetCamera(ChVector<>(1.5f,0.8f,-1.0f),ChVector<>(0.5f,0.f,0.f),60,false);
 
@@ -1927,7 +1947,8 @@ int main(int argc, char* argv[])
 	application.GetSystem()->SetIntegrationType(ChSystem::INT_TASORA);
 	application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD); // or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
 		// important! dt is small, and particles are small, so it's better to keep this small...
-	application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15); // not needed in INT_TASORA, only for INT_ANITESCU
+	application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15);// not needed in INT_TASORA, only for INT_ANITESCU
+	application.GetSystem()->SetMinBounceSpeed(0.002);
 
 
 	double threshold = -0.815;
