@@ -48,14 +48,14 @@ using namespace std;
 // programming practice, but enough for quick tests)
 
 
-double STATIC_flow = 2000;
-double STATIC_speed = 0.160*(70.40*((2*CH_C_PI)/60)); //[m/s]
+double STATIC_flow = 1000;
+double STATIC_speed = 0.160*(44.8*((2*CH_C_PI)/60)); //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
-const double drumspeed = 70.40*((2*CH_C_PI)/60); //[rad/s]
+const double drumspeed = 44.8*((2*CH_C_PI)/60); //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
 const double intensity = 0.32;
@@ -71,6 +71,9 @@ const double f = U/log(((h1+j-(drumdiameter/2))*(h2+j-(electrodediameter/2)))/((
 double sphrad = 0.38e-3;
 double sphrad2 = 0.25e-3;
 double sphrad3 = 0.794e-3;
+double particles_dt;
+int debris_number = 0;
+int max_numb_particles = 50;
 
 
 // conveyor constant
@@ -121,7 +124,7 @@ ChCoordsys<> Spazzola_csys  ( ChVector<>(conveyor_length/2-0.10, -(drumdiameter*
 
 
 // set as true for saving log files each n frames
-bool save_dataset = true; // true;
+bool save_dataset = false;
 bool save_irrlicht_screenshots = false;
 bool save_POV_screenshots = false;
 int saveEachNframes = 3;
@@ -298,13 +301,13 @@ public:
 						return true;
 					case irr::KEY_F3:	// camera will point to bins
 						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0.8, 0.2, 0.9) ) );
-						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos + ChVector<>(0.2,-0.8, 0  ) ) );
+						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos + ChVector<>(0.2f,-0.8f, 0.f  ) ) );
 						application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
 						return true;
 					case irr::KEY_F4:	// camera will point to drum in orthographic projection
 						application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( drum_csys.pos + ChVector<>(0.0,0.0, 4) ) );
 						application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( drum_csys.pos ) );	
-						matrix.buildProjectionMatrixOrthoLH(0.4, 0.3, 0.3f, 100.f);
+						matrix.buildProjectionMatrixOrthoLH(0.4f, 0.3f, 0.3f, 100.f);
 						application->GetSceneManager()->getActiveCamera()->setProjectionMatrix(matrix,true);
 						return true;
 
@@ -365,9 +368,9 @@ void create_debris(double dt, double particles_second,
 				   ChPovRay* mpov_exporter)
 {
 
-	double sph_fraction = 0.33;
+	double sph_fraction = 1;//0.33;
 	double sph2_fraction = 0;
-	double sph3_fraction = 0.67;
+	double sph3_fraction = 0;//0.67;
 	double box_fraction = 0;
 	double cyl_fraction = 1-box_fraction-(sph_fraction + sph2_fraction + sph3_fraction);
 
@@ -387,11 +390,14 @@ void create_debris(double dt, double particles_second,
 	
 
 	double exact_particles_dt = dt * particles_second;
-	double particles_dt = floor(exact_particles_dt);
+	//double particles_dt= floor(exact_particles_dt);
+	particles_dt= floor(exact_particles_dt);
 	double remaind = exact_particles_dt - particles_dt;
-	
+
+    
 	if (remaind > ChRandom()) particles_dt +=1;
 
+    
 	for (int i = 0; i < particles_dt; i++)
 	{
 		ChSharedPtr<ChBody> created_body;
@@ -420,7 +426,7 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.75f); 
+			//mrigidBody->SetImpactC(0.75f);
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 			
 			       
@@ -471,7 +477,7 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetMass(sphmass2);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia2,sphinertia2,sphinertia2));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.75f); 
+			//mrigidBody->SetImpactC(0.75f); 
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 			      
 			// Define a collision shape 
@@ -512,7 +518,7 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetMass(sphmass3);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia3,sphinertia3,sphinertia3));
 			mrigidBody->SetFriction(0.2f);
-			mrigidBody->SetImpactC(0.75f); 
+			//mrigidBody->SetImpactC(0.75f); 
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 			      
 			// mrigidBody->SetRollingFriction(0.1);
@@ -762,7 +768,8 @@ void create_debris(double dt, double particles_second,
 	}
 
 } 
-     
+
+
      
   
 // Function that deletes old debris (to avoid infinite creation that fills memory)
@@ -977,7 +984,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 						electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*450000*(epsilonR/(epsilonR+2)); // charge
 						electricproperties->chargeP *= (1.0 - 0.3*ChRandom() );
 					}
-				} //15000000,750000
+				} //15000000,750000, 
 				// discharge the particle? (contact w. blade)
 				if (distx < -(drumdiameter*0.5 -0.009) && (disty > -(drumdiameter*0.5 + 0.009)) || sqrt(pow(distx,2)+ pow(disty,2))> (1.03*drumdiameter*0.5))
 				{
@@ -1325,7 +1332,7 @@ int main(int argc, char* argv[])
 	application.AddTypicalLights();
 	application.AddTypicalCamera(core::vector3df(1.5f,0.4f,-1.0f), core::vector3df(0.5f,0.f,0.f));
 	if (irr_cast_shadows)
-		application.AddLightWithShadow(vector3df(-4.5,5.5,4.5), vector3df(0,0,0), 10, 1.2,10.2, 30,512, video::SColorf(1,0.9,0.9));
+		application.AddLightWithShadow(vector3df(-4.5f,5.5f,4.5f), vector3df(0.f,0.f,0.f), 10, 1.2,10.2, 30,512, video::SColorf(1.f,0.9f,0.9f));
 
 	// This is for GUI tweaking of system parameters..
 	MyEventReceiver receiver(&application);
@@ -1347,7 +1354,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence1);
 		mfence1->SetBodyFixed(true);
-		mfence1->SetFriction(0.01);
+		mfence1->SetFriction(0.01f);
 		mfence1->GetCollisionModel()->SetFamily(1);
 		mfence1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
 		mfence1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
@@ -1359,7 +1366,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence2);
 		mfence2->SetBodyFixed(true);
-		mfence2->SetFriction(0.01);
+		mfence2->SetFriction(0.01f);
 		mfence2->GetCollisionModel()->SetFamily(1);
 		mfence2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
 		mfence2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
@@ -1372,7 +1379,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence3);
 		mfence3->SetBodyFixed(true);
-		mfence3->SetFriction(0.01);
+		mfence3->SetFriction(0.01f);
 		mfence3->GetCollisionModel()->SetFamily(1);
 		mfence3->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2); 
 		mfence3->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
@@ -1387,7 +1394,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence4);
 		mfence4->SetBodyFixed(true);
-		mfence4->SetFriction(0.1);
+		mfence4->SetFriction(0.1f);
 
 
 		ChSharedPtr<ChBody> mfence5 = create_box_collision_shape(
@@ -1396,7 +1403,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence5);
 		mfence5->SetBodyFixed(true);
-		mfence5->SetFriction(0.1);
+		mfence5->SetFriction(0.1f);
 
 
 		ChSharedPtr<ChBody> mfence6 = create_box_collision_shape(
@@ -1406,7 +1413,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence6);
 		mfence6->SetBodyFixed(true);
-		mfence6->SetFriction(0.1);
+		mfence6->SetFriction(0.1f);
 
 
 		ChSharedPtr<ChBody> mfence7 = create_box_collision_shape(
@@ -1416,7 +1423,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence7);
 		mfence7->SetBodyFixed(true);
-		mfence7->SetFriction(0.1);
+		mfence7->SetFriction(0.1f);
 
 
 		ChSharedPtr<ChBody> mfence8 = create_box_collision_shape(
@@ -1426,7 +1433,7 @@ int main(int argc, char* argv[])
 					);
 		application.GetSystem()->Add(mfence8);
 		mfence8->SetBodyFixed(true);
-		mfence8->SetFriction(0.1);
+		mfence8->SetFriction(0.1f);
 
 		if (n == 2)
 		{
@@ -1438,7 +1445,7 @@ int main(int argc, char* argv[])
 							);
 			application.GetSystem()->Add(mfence9);
 			mfence9->SetBodyFixed(true);
-			mfence9->SetFriction(0.1);
+			mfence9->SetFriction(0.1f);
 		}
 		if (n == 3)
 		{
@@ -1451,7 +1458,7 @@ int main(int argc, char* argv[])
 							);
 			application.GetSystem()->Add(mfence9);
 			mfence9->SetBodyFixed(true);
-			mfence9->SetFriction(0.1);
+			mfence9->SetFriction(0.1f);
 			ChSharedPtr<ChBody> mfence10 = create_box_collision_shape(
 							ChVector<>(conveyor_length/2+x_splitter2-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
 							ChVector<>(splitter_width,splitter_height,bin_width),	// size
@@ -1459,7 +1466,7 @@ int main(int argc, char* argv[])
 							);
 			application.GetSystem()->Add(mfence10);
 			mfence10->SetBodyFixed(true);
-			mfence10->SetFriction(0.1);
+			mfence10->SetFriction(0.1f);
 		}
 		if (n == 4)
 		{
@@ -1473,7 +1480,7 @@ int main(int argc, char* argv[])
 							);
 			application.GetSystem()->Add(mfence9);
 			mfence9->SetBodyFixed(true);
-			mfence9->SetFriction(0.1);
+			mfence9->SetFriction(0.1f);
 			ChSharedPtr<ChBody> mfence10 = create_box_collision_shape(
 							ChVector<>(conveyor_length/2+x_splitter2-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
 							ChVector<>(splitter_width,splitter_height,bin_width),	// size
@@ -1481,7 +1488,7 @@ int main(int argc, char* argv[])
 							);
 			application.GetSystem()->Add(mfence10);
 			mfence10->SetBodyFixed(true);
-			mfence10->SetFriction(0.1);
+			mfence10->SetFriction(0.1f);
 			ChSharedPtr<ChBody> mfence11 = create_box_collision_shape(
 							ChVector<>(conveyor_length/2+x_splitter3-2*drumdiameter,y_posbin+splitter_height/2-drumdiameter/2+binbase,0),
 							ChVector<>(splitter_width,splitter_height,bin_width),	// size
@@ -1489,7 +1496,7 @@ int main(int argc, char* argv[])
 							);
 			application.GetSystem()->Add(mfence11);
 			mfence11->SetBodyFixed(true);
-			mfence11->SetFriction(0.1);
+			mfence11->SetFriction(0.1f);
 		}
 	}
 
@@ -1502,7 +1509,7 @@ int main(int argc, char* argv[])
 							);
 		application.GetSystem()->Add(mfence12);
 		mfence12->SetBodyFixed(true);
-		mfence12->SetFriction(0.1);
+		mfence12->SetFriction(0.1f);
 
 		ChSharedPtr<ChBody> mfence13 = create_box_collision_shape(
 							ChVector<>(xnozzle+xnozzlesize/2+fence_width/2,ynozzlesize/2+ynozzle+binbase,0),
@@ -1511,7 +1518,7 @@ int main(int argc, char* argv[])
 							);
 		application.GetSystem()->Add(mfence13);
 		mfence13->SetBodyFixed(true);
-		mfence13->SetFriction(0.1);
+		mfence13->SetFriction(0.1f);
 
 		ChSharedPtr<ChBody> mfence14 = create_box_collision_shape(
 							ChVector<>(xnozzle,ynozzlesize/2+ynozzle+binbase,znozzlesize/2+fence_width/2),
@@ -1520,7 +1527,7 @@ int main(int argc, char* argv[])
 							);
 		application.GetSystem()->Add(mfence14);
 		mfence14->SetBodyFixed(true);
-		mfence14->SetFriction(0.1);
+		mfence14->SetFriction(0.1f);
 
 		ChSharedPtr<ChBody> mfence15 = create_box_collision_shape(
 							ChVector<>(xnozzle,ynozzlesize/2+ynozzle+binbase,-znozzlesize/2-fence_width/2),
@@ -1529,7 +1536,7 @@ int main(int argc, char* argv[])
 							);
 		application.GetSystem()->Add(mfence15);
 		mfence15->SetBodyFixed(true);
-		mfence15->SetFriction(0.1);
+		mfence15->SetFriction(0.1f);
 	}
 	
 
@@ -1680,8 +1687,8 @@ int main(int argc, char* argv[])
 	
 	ChSharedPtr<ChConveyor> mconveyor (new ChConveyor(conveyor_length, conv_thick, conveyor_width));
 	mconveyor->SetBodyFixed(true);
-	mconveyor->SetFriction(0.9);
-    mconveyor->SetRollingFriction(0.01);
+	mconveyor->SetFriction(0.9f);
+    mconveyor->SetRollingFriction(0.01f);
 	mconveyor->SetConveyorSpeed(STATIC_speed);
 
 	// vecchio..	mconveyor->SetPos( ChVector<>(0, 0-conv_thick, 0) );
@@ -1720,8 +1727,8 @@ int main(int argc, char* argv[])
 		mrigidBodyDrum->SetMass(drummass);
 		mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
 		mrigidBodyDrum->SetFriction(0.9f); 
-		mrigidBodyDrum->SetRollingFriction(0.01);
-		mrigidBodyDrum->SetImpactC(0.75f);
+		mrigidBodyDrum->SetRollingFriction(0.01f);
+		//mrigidBodyDrum->SetImpactC(0.75f);
 
 		// Define a collision shape 
 		mrigidBodyDrum->GetCollisionModel()->ClearModel();
@@ -2010,12 +2017,18 @@ int main(int argc, char* argv[])
 
 			
 			// Continuosly create debris that fall on the conveyor belt
+			
+			if (debris_number <= max_numb_particles)
+			{
 			create_debris(	application.GetTimestep(), 
 							STATIC_flow, 
 							nozzle_csys,
 							*application.GetSystem(), 
 							&application, 
 							&pov_exporter);
+
+			debris_number = debris_number + particles_dt;
+			}
 
 			// Limit the max age (in seconds) of debris particles on the scene, 
 			// deleting the oldest ones, for performance
