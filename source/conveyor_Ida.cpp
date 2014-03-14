@@ -47,19 +47,19 @@ using namespace std;
 // Static values valid through the entire program (bad
 // programming practice, but enough for quick tests)
 
-
+double STATIC_rpm = 44.8;
 double STATIC_flow = 1000;
-double STATIC_speed = 0.160*(44.8*((2*CH_C_PI)/60)); //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
-const double drumspeed = 44.8*((2*CH_C_PI)/60); //[rad/s]
+const double drumspeed = STATIC_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
+const double drumdiameter = 0.320;
+double STATIC_speed = (drumdiameter/2.0)*(STATIC_rpm*((2.0*CH_C_PI)/60.0)); //[m/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
 const double intensity = 0.32;
-const double drumdiameter = 0.320;
 const double electrodediameter = 0.038;
 const double U = 30000; // supplied high-voltage [v]
 const double L = 0.267; //certer distance of rotating roll electrode and electrostatic pole *****ida
@@ -141,7 +141,7 @@ bool create_programmatically_bins    = false;
 bool create_programmatically_nozzle  = false;
 bool create_programmatically_drum    = false;
 bool create_programmatically_fences  = false;
-
+bool create_programmatically_belt    = false;
 
 
 // If one needs to add special data to a particle/object, the proper way to
@@ -426,12 +426,12 @@ void create_debris(double dt, double particles_second,
 			mrigidBody->SetMass(sphmass);
 			mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
 			mrigidBody->SetFriction(0.2f);
-			//mrigidBody->SetImpactC(0.75f);
+			mrigidBody->SetImpactC(0.75f);
 			mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 			
 			       
-			// mrigidBody->SetRollingFriction(0.1);
-			// mrigidBody->SetSpinningFriction(0.1);
+			mrigidBody->SetRollingFriction(0.2);
+			mrigidBody->SetSpinningFriction(0.2);
 
 
 			// Define a collision shape 
@@ -1092,8 +1092,8 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 			test << acc_torque.z << "\t"; 
 			test << acc_torque.Length() << "\t";*/
 			test << alpha << "\t";
-			test << abody->GetConductivity() << "\n"; }
-		
+			//test << abody->GetConductivity() << "\n";  //***ALEX** abody->GetConductivity() non è più supportato, guarda l'asset elettrico invece!
+			}
 		} // end if(was_a_particle) , i.e. a body with electrical asset
 
 	} // end for() loop on all bodies
@@ -1127,7 +1127,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 		// calculate the position of body COG with respect to the drum COG:
 		ChVector<> mrelpos = drum_csys.TrasformParentToLocal(abody->GetPos());
 		double shape = abody->GetCollisionModel()->GetShapeType();
-		double conduct= abody->GetConductivity();
+		//double conduct= abody->GetConductivity();  //***ALEX*** GetConductivity() non era più suppportato! invece: bisogna guardare l'electrical asset!
 		double sphmass=abody->GetMass();
 		double posy=-mrelpos.z; // vertical position of the particle with respect to the drum COG
 		double posx=mrelpos.x;
@@ -1148,7 +1148,7 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 					threshold << mrelpos.y << "\t";
 					threshold << shape << "\t";
 					threshold << sphmass << "\t";
-					threshold << conduct << "\n";
+					//threshold << conduct << "\n";
 					//abody->SetIdentifier(a);
 				}
 		
@@ -1341,7 +1341,7 @@ int main(int argc, char* argv[])
 
 
 	// Set small collision envelopes for objects that will be created from now on..
-	ChCollisionModel::SetDefaultSuggestedEnvelope(0.002);
+	ChCollisionModel::SetDefaultSuggestedEnvelope(0.0002); //0.002
 	ChCollisionModel::SetDefaultSuggestedMargin  (0.001);
 
 
@@ -1615,7 +1615,10 @@ int main(int argc, char* argv[])
 		mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
 		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 		mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-		mrigidBodyDrum->SetFriction(0.9f); 
+		mrigidBodyDrum->SetFriction(0.1f); 
+		mrigidBodyDrum->SetImpactC(0.75f);
+		//mrigidBodyDrum->SetRollingFriction(0.2f);
+		//mrigidBodyDrum->SetSpinningFriction(0.2f);
 	}
 	
     //***Ida
@@ -1656,6 +1659,19 @@ int main(int argc, char* argv[])
 				
 	}
 
+	ChSharedPtr<ChBodyAuxRef> mrigidBodyConveyor = mphysicalSystem.Search("conveyor-1");  
+	if (mrigidBodyConveyor.IsNull())
+		GetLog() << "ERROR: cannot find conveyor from its name in the C::E system! ! \n";
+	else
+	{
+		mrigidBodyConveyor->GetCollisionModel()->SetFamily(2);
+		mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
+		mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
+		mrigidBodyConveyor->SetFriction(0.9f);
+		mrigidBodyConveyor->SetImpactC(0.75f);
+	}
+
+
 	//***Ida
 	
 
@@ -1682,30 +1698,34 @@ int main(int argc, char* argv[])
 	//
 	// Create the conveyor belt (this is a pure Chrono::Engine object, 
 	// because an Irrlicht 'SceneNode' wrapper is not yet available, so it is invisible - no 3D preview)
-	//
-
 	
-	ChSharedPtr<ChConveyor> mconveyor (new ChConveyor(conveyor_length, conv_thick, conveyor_width));
-	mconveyor->SetBodyFixed(true);
-	mconveyor->SetFriction(0.9f);
-    mconveyor->SetRollingFriction(0.01f);
-	mconveyor->SetConveyorSpeed(STATIC_speed);
+	// NOTE!!! for the Corona Effect Separator this should NOT be needed....
 
-	// vecchio..	mconveyor->SetPos( ChVector<>(0, 0-conv_thick, 0) );
-	mconveyor->SetPos( conveyor_csys.pos );
-	mconveyor->ConcatenatePreTransformation(ChFrameMoving<>(ChVector<>(0, -conv_thick/2., 0)));
+	ChSharedPtr<ChConveyor> mconveyor;
+	if (create_programmatically_belt)
+	{
+		mconveyor = ChSharedPtr<ChConveyor>(new ChConveyor(conveyor_length, conv_thick, conveyor_width));
+		mconveyor->SetBodyFixed(true);
+		mconveyor->SetFriction(0.9f);
+		mconveyor->SetRollingFriction(0.01f);
+		mconveyor->SetConveyorSpeed(STATIC_speed);
+
+		// vecchio..	mconveyor->SetPos( ChVector<>(0, 0-conv_thick, 0) );
+		mconveyor->SetPos( conveyor_csys.pos );
+		mconveyor->ConcatenatePreTransformation(ChFrameMoving<>(ChVector<>(0, -conv_thick/2., 0)));
 
 
-	mconveyor->GetPlate()->GetCollisionModel()->SetFamily(2); // note the additional  ->GetPlate()
-    mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
-	mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
+		mconveyor->GetPlate()->GetCollisionModel()->SetFamily(2); // note the additional  ->GetPlate()
+		mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1); 
+		mconveyor->GetPlate()->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3); 
 
-	mphysicalSystem.Add(mconveyor);
+		mphysicalSystem.Add(mconveyor);
 
-	// Attach a visualization shape asset (optional). 
-	ChSharedPtr<ChBoxShape> mbox(new ChBoxShape);
-	mbox->GetBoxGeometry().SetLenghts(ChVector<>(conveyor_length,conv_thick, conveyor_width));
-	mconveyor->AddAsset(mbox);
+		// Attach a visualization shape asset (optional). 
+		ChSharedPtr<ChBoxShape> mbox(new ChBoxShape);
+		mbox->GetBoxGeometry().SetLenghts(ChVector<>(conveyor_length,conv_thick, conveyor_width));
+		mconveyor->AddAsset(mbox);
+	}
 
 
 	//
@@ -1728,7 +1748,7 @@ int main(int argc, char* argv[])
 		mrigidBodyDrum->SetInertiaXX(ChVector<>(Ixx,Ixx,Ixx));
 		mrigidBodyDrum->SetFriction(0.9f); 
 		mrigidBodyDrum->SetRollingFriction(0.01f);
-		//mrigidBodyDrum->SetImpactC(0.75f);
+		mrigidBodyDrum->SetImpactC(0.75f);
 
 		// Define a collision shape 
 		mrigidBodyDrum->GetCollisionModel()->ClearModel();
@@ -1951,12 +1971,13 @@ int main(int argc, char* argv[])
 	application.SetStepManage(true);
 	application.SetTimestep(0.001);
 	
-	application.GetSystem()->SetIntegrationType(ChSystem::INT_TASORA);
+	application.GetSystem()->SetIntegrationType(ChSystem::INT_ANITESCU);
 	application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD); // or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
 		// important! dt is small, and particles are small, so it's better to keep this small...
 	application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15);// not needed in INT_TASORA, only for INT_ANITESCU
-	application.GetSystem()->SetMinBounceSpeed(0.002);
+	application.GetSystem()->SetMinBounceSpeed(0.01);
 
+	application.GetSystem()->Set_G_acc(ChVector<>(0, -9.81, 0));
 
 	double threshold = -0.815;
 	ofstream record;
@@ -1973,7 +1994,8 @@ int main(int argc, char* argv[])
 
 	ChFileutils::MakeDirectory("screenshots");
 	ChFileutils::MakeDirectory("output");
-
+	
+	application.GetSystem()->ShowHierarchy(GetLog());
 
 	while(application.GetDevice()->run()) 
 	{
@@ -2035,7 +2057,8 @@ int main(int argc, char* argv[])
 			purge_debris (*application.GetSystem(),6);
 
 			// Maybe the user played with the slider and changed STATIC_speed...
-		 	mconveyor->SetConveyorSpeed(STATIC_speed);
+			if (!mconveyor.IsNull())
+		 		mconveyor->SetConveyorSpeed(STATIC_speed);
 			// ..also for rotating drum:
 			if (!mengine.IsNull())
 			  if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
