@@ -1341,8 +1341,8 @@ int main(int argc, char* argv[])
 
 
 	// Set small collision envelopes for objects that will be created from now on..
-	ChCollisionModel::SetDefaultSuggestedEnvelope(0.0002); //0.002
-	ChCollisionModel::SetDefaultSuggestedMargin  (0.001);
+	ChCollisionModel::SetDefaultSuggestedEnvelope(0.002); 
+	ChCollisionModel::SetDefaultSuggestedMargin  (0.0008);
 
 
 	// Create conveyor fences
