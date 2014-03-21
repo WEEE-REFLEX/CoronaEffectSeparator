@@ -45,17 +45,17 @@ using namespace gui;
 using namespace std;
 
 // Static values valid through the entire program (bad
-// programming practice, but enough for quick tests)
+// programming practice, but enough for quick tests)k
 
 
-double STATIC_flow = 1000;
-double STATIC_speed = 0.160*(44.8*((2*CH_C_PI)/60)); //[m/s]
+double STATIC_flow = 600;
+double STATIC_speed = 0.160*(70.4*((2*CH_C_PI)/60)); //[m/s]
 
 //const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
-const double drumspeed = 44.8*((2*CH_C_PI)/60); //[rad/s]
+const double drumspeed = 70.4*((2*CH_C_PI)/60); //[rad/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
 const double numberofpoles = 9;
 const double intensity = 0.32;
@@ -72,8 +72,8 @@ double sphrad = 0.38e-3;
 double sphrad2 = 0.25e-3;
 double sphrad3 = 0.794e-3;
 double particles_dt;
-int debris_number = 0;
-int max_numb_particles = 50;
+double debris_number = 0;
+double max_numb_particles = 100;
 
 
 // conveyor constant
@@ -230,8 +230,9 @@ public:
 				// ..add a GUI slider to control particles flow
 				scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
 								true, rect<s32>(560, 15, 700, 15+20), 0, 101);
-				scrollbar_flow->setMax(100); 
-				scrollbar_flow->setPos(25);
+				scrollbar_flow->setMax(100);
+				//scrollbar_flow->setPos(25);
+				scrollbar_flow->setPos(((int)((STATIC_flow/1000.0 )*25)));
 				text_flow = application->GetIGUIEnvironment()->addStaticText(
 							L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
 
@@ -239,7 +240,8 @@ public:
 				scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(
 								true, rect<s32>(560, 40, 700, 40+20), 0, 102);
 				scrollbar_speed->setMax(100); 
-				scrollbar_speed->setPos(72);
+				//scrollbar_speed->setPos(72);
+			    scrollbar_speed->setPos(((int)((STATIC_speed/2.0 )*67)));
 				text_speed = application->GetIGUIEnvironment()->addStaticText(
 								L"Conv.vel. [m/s]:", rect<s32>(710,40,800,40+20), false);
 
@@ -262,7 +264,6 @@ public:
 				{
 					s32 id = event.GUIEvent.Caller->getID();
 					IGUIEnvironment* env = application->GetIGUIEnvironment();
-
 					switch(event.GUIEvent.EventType)
 					{
 					case EGET_SCROLL_BAR_CHANGED:
@@ -276,7 +277,7 @@ public:
 							if (id == 102) // id of 'speed' slider..
 							{
 								s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-								STATIC_speed = 1.0* (((double)pos)/100);
+								STATIC_speed = 3.0* (((double)pos)/100);
 								char message[50]; sprintf(message,"Conv.vel. %2.2f [m/s]", STATIC_speed);
 								text_speed->setText(core::stringw(message).c_str());
 							}
@@ -368,9 +369,9 @@ void create_debris(double dt, double particles_second,
 				   ChPovRay* mpov_exporter)
 {
 
-	double sph_fraction = 1;//0.33;
+	double sph_fraction = 0.33;
 	double sph2_fraction = 0;
-	double sph3_fraction = 0;//0.67;
+	double sph3_fraction = 0.67;
 	double box_fraction = 0;
 	double cyl_fraction = 1-box_fraction-(sph_fraction + sph2_fraction + sph3_fraction);
 
@@ -718,7 +719,7 @@ void create_debris(double dt, double particles_second,
 		if (!created_body.IsNull() && do_velocity_clamping)
 		{
 			created_body->SetLimitSpeed(true);
-			created_body->SetMaxSpeed(100);
+			created_body->SetMaxSpeed(5);
 			created_body->SetMaxWvel(250);
 		}
 
