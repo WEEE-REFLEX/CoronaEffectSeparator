@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////
 //
-//   Eddy Current Separator
+//   Corona Electrostatic Separator
 //
 //   This program is based on the following
 //   libraries:
@@ -50,7 +50,6 @@ using namespace std;
 double STATIC_rpm = 44.8;
 double STATIC_flow = 1000;
 
-//const double mu0 = 0.0000012566; //vacuum permability [Tm/A]
 const double epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
 const double epsilonO = 8.854187e-12; //vacuum permeability
 const double epsilonR = 2.5; //relative permeability
@@ -58,8 +57,6 @@ const double drumspeed = STATIC_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
 const double drumdiameter = 0.320;
 double STATIC_speed = (drumdiameter/2.0)*(STATIC_rpm*((2.0*CH_C_PI)/60.0)); //[m/s]
 const double eta = 0.0000181; // Air drag coefficent [N*s/m^2]
-const double numberofpoles = 9;
-const double intensity = 0.32;
 const double electrodediameter = 0.038;
 const double U = 30000; // supplied high-voltage [v]
 const double L = 0.267; //certer distance of rotating roll electrode and electrostatic pole *****ida
@@ -819,9 +816,7 @@ void purge_debris(ChSystem& mysystem, double max_age = 5.0)
 void apply_forces (	ChSystem* msystem,		// contains all bodies
 						ChCoordsys<>& drum_csys, // pos and rotation of drum 
 						double drumspeed,		 // speed of drum
-						double numberofpoles,	 
-						double intensity,		 
-						double drumdiameter,
+					    double drumdiameter,
 						double h1,
 						double h2,
 						double L,
@@ -1028,134 +1023,12 @@ void apply_forces (	ChSystem* msystem,		// contains all bodies
 		
 			//abody->Accumulate_force(LiftForce, abody->GetPos(), false);
 			
-			//ChVector<> InducedTorque;
-			//InducedTorque.x = 0;
-			//InducedTorque.y = 0;
-			//InducedTorque.z = -constTorque*pow(B,2);
-			//InducedTorque.z = -pow(B,2)*Volume*constI/mu0;
-			//abody->Accumulate_torque(InducedTorque, false);
-			/*
-			data_forces << phi << ",\t";
-			data_forces << mu0 << ",\t";
-			data_forces << msystem->GetChTime() << ",\t";
-			data_forces << distance << ",\t";
-			data_forces << drumspeed*numberofpoles+particleRspeed.z << ",\t";
-			data_forces << sigma << ",\t";
-			data_forces << (numberofpoles+1)*pow(B,2)*Volume/mu0/distance*constR << ",\t";
-			data_forces << (numberofpoles+1)*pow(B,2)*Volume/mu0/distance*constI << ",\t";
-			data_forces << InducedForce.x << ",\t";
-			data_forces << InducedForce.y << ",\t";
-			data_forces << InducedForce.z << ",\t";
-			data_forces << constR << ",\t";
-			data_forces << constI << ",\t";
-			data_forces << shape << "\n";*/
-			//coordinate del rotore. la y del rotore è la z delle coordinate del sistema
-			ChVector<> pos = drum_csys.TrasformParentToLocal(abody->GetPos());
-			ChVector<> acc_force=abody->Get_accumulated_force();
-			//ChVector<> acc_torque=abody->Get_accumulated_torque();
-			
-			ChVector<> iner=abody->GetInertiaXX();
-			double ingxx = iner.x;
-			double ingyy = iner.y;
-			double ingzz = iner.z;
 
-			double posx=pos.x;
-			double posy=pos.y;
-			if (i>12+n &&totframes%10==0){
-		/*	test << b << "\t";
-			test << diam.x << "\t";
-			test << diam.y << "\t";
-			test << diam.z << "\t";
-			test << posx << "\t";
-			test << posy << "\t";
-			test << pos.z << "\t";
-			test << B << "\t";
-			test << distance << "\t";*/
-			test << ingxx << "\t";
-			test << ingyy << "\t";
-			test << ingzz << "\t";
- 			/*test << particleRspeed.x << "\t";
-			test << particleRspeed.y << "\t"; 
-			test << particleRspeed.z << "\t";*/
-			//test << particleRspeed_loc.x << "\t";
-			//test << particleRspeed_loc.y << "\t"; 
-			//test << particleRspeed_loc.z << "\t";
-			/*test << acc_force.x << "\t";
-			test << acc_force.y << "\t";
-			test << acc_force.z << "\t";
-			test << DragForce.x << "\t";
-			test << DragForce.y << "\t";
-			test << LiftForce.x << "\t";
-			test << LiftForce.y << "\t";
-			test << InducedForce.x << "\t";
-			test << InducedForce.y << "\t";
-			test << acc_force.Length() << "\t";
-			test << acc_torque.z << "\t"; 
-			test << acc_torque.Length() << "\t";*/
-			test << alpha << "\t";
-			//test << abody->GetConductivity() << "\n";  //***ALEX** abody->GetConductivity() non è più supportato, guarda l'asset elettrico invece!
-			}
 		} // end if(was_a_particle) , i.e. a body with electrical asset
 
 	} // end for() loop on all bodies
 }
  
-// Control on the fall point*****************************************************************************************
-
- void fall_point (	ChIrrAppInterface& application,
-					ChSystem* msystem,		// contains all bodies
-					ChCoordsys<>& drum_csys, // pos and rotation of drum
-					double y_threshold)		
-{
-	double deltaT = application.GetTimestep();
-	double gravity = 9.81;
-	double deltaS = 0.0005; //gravity*pow(deltaT,2)/2;
-	ofstream threshold;
-	threshold.open("output\\threshold.dat",ios::app); 
-	
-	
-	/*char padnumber[100];
-	char filename[200];
-	sprintf(padnumber, "%d", (totframes+10000));
-	sprintf(filename, "output\\threshold%s.dat", padnumber+1);
-	ChStreamOutAsciiFile threshold(filename);*/
-	
-	for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
-	{
-		
-		ChBody* abody = (*msystem->Get_bodylist())[i];
-		int flag=i-13;
-		// calculate the position of body COG with respect to the drum COG:
-		ChVector<> mrelpos = drum_csys.TrasformParentToLocal(abody->GetPos());
-		double shape = abody->GetCollisionModel()->GetShapeType();
-		//double conduct= abody->GetConductivity();  //***ALEX*** GetConductivity() non era più suppportato! invece: bisogna guardare l'electrical asset!
-		double sphmass=abody->GetMass();
-		double posy=-mrelpos.z; // vertical position of the particle with respect to the drum COG
-		double posx=mrelpos.x;
-		//int a=0;
-		//int b=abody->GetIdentifier();
-			//if (posy <= y_threshold+bin_height && posy >= y_threshold && posx>0 && posx<bin_length && b!=0)
-				{   
-					/* vecchio codice 
-					char padnumber[100];
-					char filename[200];
-					sprintf(padnumber, "%d", (totframes+10000));
-					sprintf(filename, "output\\threshold%s.dat", padnumber+1);
-					ChStreamOutAsciiFile threshold(filename);*/
-
-					threshold << msystem->GetChTime() << "\t";
-					threshold << mrelpos.x << "\t";
-					threshold << -mrelpos.z << "\t";
-					threshold << mrelpos.y << "\t";
-					threshold << shape << "\t";
-					threshold << sphmass << "\t";
-					//threshold << conduct << "\n";
-					//abody->SetIdentifier(a);
-				}
-		
-	}
-}//********************************************************************************************************************
-
 
 void draw_forces(ChIrrApp& application, double scalefactor = 1.0)
 {
@@ -1281,35 +1154,7 @@ void DrawTrajectories(ChIrrApp& application)
 }
 
 
-//void fall_point (	ChIrrAppInterface& application,
-//					ISceneNode* parent,
-//					ChSystem* msystem,		// contains all bodies
-//					ChCoordsys<>& drum_csys, // pos and rotation of drum
-//					double y_threshold)		
-//{
-//	char padnumber[100];
-//	char filename[200];
-//	sprintf(padnumber, "%d", (totframes+10000));
-//	sprintf(filename, "output\\threshold%s.dat", padnumber+1);
-//	ChStreamOutAsciiFile threshold(filename);
-//
-//	ISceneNodeList::ConstIterator it = parent->getChildren().begin();
-//	for(; it != parent->getChildren().end(); ++it)
-//	{
-//		if (parent->getAbsolutePosition().Y <= y_threshold)
-//		{
-//			threshold << msystem->GetChTime() << ",\t";
-//			threshold << parent->getAbsolutePosition().X << ",\t";
-//			threshold << parent->getAbsolutePosition().Y << ",\t";
-//			threshold << parent->getAbsolutePosition().Z << ",\t";
-//
-//			ISceneNode* todelete = (*it);
-//			++it;
-//			parent->removeChild(todelete);
-//		}
-//	}
-//}   
- 
+
 int main(int argc, char* argv[])
 {
 	// In CHRONO engine, The DLL_CreateGlobals() - DLL_DeleteGlobals(); pair is needed if
@@ -2014,9 +1859,7 @@ int main(int argc, char* argv[])
 			apply_forces (	&mphysicalSystem,		// contains all bodies
 							drum_csys,		 // pos and rotation of axis of drum (not rotating reference!)
 							drumspeed,		 // speed of drum
-							numberofpoles,	 // number of couples of poles
-							intensity,		 // intensity of the magnetic field
-							drumdiameter,
+						    drumdiameter,
 							h1,
 							h2,
 							L,
@@ -2027,10 +1870,7 @@ int main(int argc, char* argv[])
 							f,
 							totframes);
 
-			fall_point (	application,
-							&mphysicalSystem,		// contains all bodies
-							drum_csys,  // pos and rotation of drum  (not rotating reference!)
-							threshold);
+		
 
 			if (receiver.checkbox_plotforces->isChecked())
 				draw_forces ( application , 1000);
