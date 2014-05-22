@@ -1,4 +1,4 @@
-EddyCurrentSeparator
+CoronaEffectSeparator
 ====================
 
-Simulation of an ECS device, using ProjectChrono Chrono::Engine library
+Simulation of a CES device, using ProjectChrono Chrono::Engine library
