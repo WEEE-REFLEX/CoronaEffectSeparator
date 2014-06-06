@@ -11,7 +11,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 #--------------------------------------------------------------
 #         Modify the project name if you want: 
 
-PROJECT(EddyCurrentConveyor)
+PROJECT(CoronaElectrostaticSeparator)
 
 
 
@@ -42,7 +42,11 @@ INCLUDE_DIRECTORIES(  ${CHRONOENGINE_INCLUDES}  )
 #--------------------------------------------------------------
 #         Set c++ sources for building the exe, as usual in CMake
 
-ADD_EXECUTABLE(conveyor     source/conveyor_Ida.cpp)
+ADD_EXECUTABLE(conveyor     	source/conveyor_Ida.cpp
+				source/SimulatorCES.h				
+				source/UserInterfaceEventReceiver.cpp
+				source/UserInterfaceEventReceiver.h
+				source/ElectricParticleProperty.h )
 
 
 
@@ -50,7 +54,7 @@ ADD_EXECUTABLE(conveyor     source/conveyor_Ida.cpp)
 #         The following is needed for some platforms
 
 SET_TARGET_PROPERTIES(conveyor PROPERTIES 
-	LINK_FLAGS "${CH_LINKERFLAG_EXE}" )
+	LINK_FLAGS "${CH_LINKERFLAG_EXE} /FORCE:MULTIPLE"   )
 
 	
 #--------------------------------------------------------------
