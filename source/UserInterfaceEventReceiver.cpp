@@ -86,17 +86,17 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 		case irr::KEY_F1:	// camera will point to drum
 			application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( simulator->drum_csys.pos + ChVector<>(0,0.4,0.4) ) );
 			application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( simulator->drum_csys.pos ) );
-			application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
+			application->GetSceneManager()->getActiveCamera()->setFOV((float)(36*chrono::CH_C_DEG_TO_RAD));
 			return true;
 		case irr::KEY_F2:	// camera will point to nozzle
 			application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( simulator->nozzle_csys.pos + ChVector<>(0.2,0.3,0.4) ) );
 			application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( simulator->nozzle_csys.pos ) );
-			application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
+			application->GetSceneManager()->getActiveCamera()->setFOV((float)(36*chrono::CH_C_DEG_TO_RAD));
 			return true;
 		case irr::KEY_F3:	// camera will point to bins
 			application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( simulator->drum_csys.pos + ChVector<>(0.8, 0.2, 0.9) ) );
 			application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( simulator->drum_csys.pos + ChVector<>(0.2f,-0.8f, 0.f  ) ) );
-			application->GetSceneManager()->getActiveCamera()->setFOV(36*chrono::CH_C_DEG_TO_RAD);
+			application->GetSceneManager()->getActiveCamera()->setFOV((float)(36*chrono::CH_C_DEG_TO_RAD));
 			return true;
 		case irr::KEY_F4:	// camera will point to drum in orthographic projection
 			application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( simulator->drum_csys.pos + ChVector<>(0.0,0.0, 4) ) );
