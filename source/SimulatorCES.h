@@ -11,6 +11,7 @@
 
 #include "physics/CHapidll.h" 
 #include "physics/CHsystem.h"
+#include "physics/ChBodyEasy.h"
 #include "physics/CHconveyor.h"
 #include "physics/CHbodyAuxRef.h"
 #include "core/ChFileutils.h"
@@ -25,8 +26,15 @@
 #include "unit_PYTHON/ChPython.h"
 #include "unit_POSTPROCESS/ChPovRay.h"
 
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/filewritestream.h"
+
 #include "ElectricParticleProperty.h"
 #include "UserInterfaceEventReceiver.h"
+#include "ChParticleEmitter.h"
+#include "ElectricForcesCES.h"
 
 // Use the namespace of Chrono
 
@@ -50,24 +58,17 @@ public:
 			// DATA of the simulator
 			//
 
-	double STATIC_rpm;
+	ElectricForcesCES ces_forces; // this contains data for computing the CES electric forces
+
+	ChParticleEmitter emitter;
+	ChSharedPtr<ChRandomParticlePositionRectangleOutlet> emitter_positions;
+	ChSharedPtr<ChRandomParticleAlignment> emitter_rotations;
+
 	double STATIC_flow;
 
-	double epsilon; // dielectric constant [F/m] *****ida 
-	double epsilonO; //vacuum permeability
-	double epsilonR; //relative permeability
-	double drumspeed; //[rad/s]
-	double drumdiameter;
-	double STATIC_speed; //[m/s]
-	double eta; // Air drag coefficent [N*s/m^2]
-	double electrodediameter;
-	double U; // supplied high-voltage [v]
-	double L; //certer distance of rotating roll electrode and electrostatic pole *****ida
-	double alpha; //angle of horizontal line and electrodes center line *****ida
-	double h1; //analytical parameter****ida
-	double h2;//analytical parameter****ida
-	double j;//analytical parameter****ida
-	double f;//analytical parameter****ida
+	double drumspeed_rpm; // [rpm]
+	double drumspeed_radss; //[rad/s]
+	
 	double sphrad;
 	double sphrad2;
 	double sphrad3;
@@ -75,13 +76,20 @@ public:
 	double debris_number;
 	double max_numb_particles;
 
+	// material surfaces
+	float surface_drum_friction;
+	float surface_drum_rolling_friction;
+	float surface_drum_spinning_friction;
+	float surface_drum_restitution;
+	float surface_plate_friction;
+	float surface_plate_rolling_friction;
+	float surface_plate_spinning_friction;
+	float surface_plate_restitution;
+	float surface_particles_friction;
+	float surface_particles_rolling_friction;
+	float surface_particles_spinning_friction;
+	float surface_particles_restitution;
 
-	// conveyor constant
-	double conveyor_length;//***ALEX, from CAD
-	double conveyor_width; //***ALEX, from CAD, was 0.6
-	double conv_thick; // non troppo sottile, altrimenti non va la collision detection! Non importa se compenetra il cilindro.
-
-	double ro;  //fluid density (air) [Kg/m^3]
 
 	// fence constant
 	double fence_width;
@@ -99,13 +107,10 @@ public:
 	double x_splitter3;
 	double splitter_width;
 	double splitter_height;
-	// hopper constant
-	double xnozzlesize;//0.2;
-	double znozzlesize; //**from CAD, nozzle width
-	double ynozzlesize;//0.5;
-	double ynozzle;
-	double xnozzle; //portato avanti****ida
-
+	
+	double xnozzlesize; 
+	double znozzlesize; 
+	
 	double densityMetal; // sn-pb //8900;//rame//1820 vecchia densità;
 	double densityPlastic;// polipropilene //900 vecchia densità;
 	int myid;
@@ -130,14 +135,11 @@ public:
 	int saveEachNframes;
 
 	bool irr_cast_shadows;
-
 	int totframes;
-		
 	bool init_particle_speed;
-
 	double particle_magnification; // for larger visualization of particle
-
-
+	std::string solidworks_py_modelfile;
+	double timestep;
 
 		///
 		/// Create the SimulatorCES
@@ -146,24 +148,67 @@ public:
 	SimulatorCES()
 	{
 			// initialize member data:
-		STATIC_rpm = 44.8;
-		STATIC_flow = 1000;
 
-		epsilon = 8.85941e-12; // dielectric constant [F/m] *****ida 
-		epsilonO = 8.854187e-12; //vacuum permeability
-		epsilonR = 2.5; //relative permeability
-		drumspeed = STATIC_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
-		drumdiameter = 0.320;
-		STATIC_speed = (drumdiameter/2.0)*(STATIC_rpm*((2.0*CH_C_PI)/60.0)); //[m/s]
-		eta = 0.0000181; // Air drag coefficent [N*s/m^2]
-		electrodediameter = 0.038;
-		U = 30000; // supplied high-voltage [v]
-		L = 0.267; //certer distance of rotating roll electrode and electrostatic pole *****ida
-		alpha = (CH_C_PI/180)*30; //angle of horizontal line and electrodes center line *****ida
-		h1 = (pow(L,2)+pow((drumdiameter/2),2)-((electrodediameter/2),2))/(2*L); //analytical parameter****ida
-		h2 = (pow(L,2)-pow((drumdiameter/2),2)+((electrodediameter/2),2))/(2*L);//analytical parameter****ida
-		j = sqrt(pow(h1,2)-pow((drumdiameter/2),2));//analytical parameter****ida
-		f = U/log(((h1+j-(drumdiameter/2))*(h2+j-(electrodediameter/2)))/((drumdiameter/2)+j-h1)*((electrodediameter/2)+j-h2));//analytical parameter****ida
+			// initialize the randomizer for positions
+		emitter_positions = ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
+		emitter_positions->OutletWidth() = 0.1;    // default x outlet size, from CAD;
+		emitter_positions->OutletHeight() = 0.182; // default y outlet size, from CAD;
+		emitter.SetParticlePositioner(emitter_positions);
+
+			// initialize the randomizer for alignments
+		emitter_rotations = ChSharedPtr<ChRandomParticleAlignmentUniform>(new ChRandomParticleAlignmentUniform);
+		emitter.SetParticleAligner(emitter_rotations);
+		
+			// initialize the randomizer for creations, with statistical distributions
+		/*
+		//***TEST***
+		ChSharedPtr<ChRandomShapeCreatorBoxes> mcreator1(new ChRandomShapeCreatorBoxes);
+		mcreator1->SetXsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.002, 1.0)) );
+		mcreator1->SetYsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.002, 1.0)) );
+		mcreator1->SetZsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.002, 1.0)) );
+
+		ChSharedPtr<ChRandomShapeCreatorCylinders> mcreator3(new ChRandomShapeCreatorCylinders);
+		mcreator3->SetRadiusDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.002, 0.0002)) );
+		mcreator3->SetLenghtFactorDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(4, 4/2.25)) );
+
+		ChSharedPtr<ChRandomShapeCreatorConvexHulls> mcreator4(new ChRandomShapeCreatorConvexHulls);
+		mcreator4->SetChordDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(0.01, 0.003)) );
+		mcreator4->SetSizeRatioYZDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(1.0, 0.3)) );
+		mcreator4->SetNpoints(14);
+
+		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
+		mcreatorTot->AddFamily(mcreator2, 0.3);
+		mcreatorTot->AddFamily(mcreator3, 0.7);
+		mcreatorTot->Setup();
+		*/
+
+		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator2(new ChRandomShapeCreatorSpheres);
+		mcreator2->SetRadiusDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(0.002, 0.002/3.25)) );
+
+		class MyCreatorFamily1 : public ChCallbackPostCreation
+		{
+			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
+			{
+				ChSharedPtr<ChTexture> mtexture(new ChTexture);
+				mtexture->SetTextureFilename("../objects/pinkwhite.png");
+				mbody->AddAsset(mtexture);
+			}
+		};
+		MyCreatorFamily1* callback_family1 = new MyCreatorFamily1;
+
+		mcreator2->SetCallbackPostCreation(callback_family1);
+
+		emitter.SetParticleCreator(mcreator2);
+		
+
+
+		solidworks_py_modelfile = "../CAD_conveyor/conveyor_Ida"; // note! do not add ".py" after the filename
+
+		STATIC_flow =0; //1000;
+
+		drumspeed_rpm = 44.8;
+		drumspeed_radss = drumspeed_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
+
 		sphrad = 0.38e-3;
 		sphrad2 = 0.25e-3;
 		sphrad3 = 0.794e-3;
@@ -171,13 +216,18 @@ public:
 		debris_number = 0;
 		max_numb_particles = 100;
 
-
-		// conveyor constant
-		conveyor_length=0.400;//***ALEX, from CAD
-		conveyor_width=0.3; //***ALEX, from CAD, was 0.6
-		conv_thick = 0.01; // non troppo sottile, altrimenti non va la collision detection! Non importa se compenetra il cilindro.
-
-		ro=1.225;  //fluid density (air) [Kg/m^3]
+		surface_drum_friction =0.5f;
+		surface_drum_rolling_friction =0;
+		surface_drum_spinning_friction =0;
+		surface_drum_restitution =0;
+		surface_plate_friction =0.2f;
+		surface_plate_rolling_friction =0;
+		surface_plate_spinning_friction =0;
+		surface_plate_restitution =0;
+		surface_particles_friction =0.2f;
+		surface_particles_rolling_friction =0;
+		surface_particles_spinning_friction =0;
+		surface_particles_restitution =0;
 
 		// fence constant
 		fence_width = 0.02;
@@ -196,28 +246,28 @@ public:
 		splitter_width=0.01;
 		splitter_height=0.4;
 		// hopper constant
-		xnozzlesize = 0.1;//0.2;
 		znozzlesize = 0.182; //**from CAD, nozzle width
-		ynozzlesize = 0.1;//0.5;
-		ynozzle = 0.01;
-		xnozzle = -conveyor_length/2+xnozzlesize/2+fence_width; //portato avanti****ida
+		xnozzlesize = 0.1; //**from CAD, nozzle width
 
 		densityMetal =  8400; // sn-pb //8900;//rame//1820 vecchia densità;
 		densityPlastic = 946;// polipropilene //900 vecchia densità;
 		myid = 1;
 
-		// Coordinate systems with position and rotation of important items in the 
+		// Init coordinate systems with position and rotation of important items in the 
 		// simulator. These are initializad with constant values, but if loading the
 		// SolidWorks model, they will be changed accordingly to what is found in the CAD 
 		// file (see later, where the SolidWorks model is parsed). 
-
-		conveyor_csys	= ChCoordsys<>( ChVector<>(0, 0-conv_thick, 0) ) ; // default position
+		/*
+		//***ALEX disabled because initialized by SolidWroks file, anyway
+		double conv_thick = 0.01; 
+		double conveyor_length = 0.6;
+		conveyor_csys	= ChCoordsys<>( ChVector<>(0, -conv_thick, 0) ) ; // default position
 		drum_csys		= ChCoordsys<>( ChVector<>(conveyor_length/2, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
-		nozzle_csys		= ChCoordsys<>( ChVector<>(xnozzle, ynozzle, 0) ); // default position
+		nozzle_csys		= ChCoordsys<>( ChVector<>(0, 0.01, 0) ); // default position
 		Splitter1_csys	= ChCoordsys<>( ChVector<>(conveyor_length/2+0.2, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
 		Splitter2_csys	= ChCoordsys<>( ChVector<>(conveyor_length/2+0.4, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
 		Spazzola_csys	= ChCoordsys<>( ChVector<>(conveyor_length/2-0.10, -(drumdiameter*0.5)-conv_thick/2,0) );  // default position
-
+		*/
 
 		// set as true for saving log files each n frames
 		save_dataset = false;
@@ -232,6 +282,219 @@ public:
 		init_particle_speed = true;
 
 		particle_magnification = 3; // for larger visualization of particle
+
+		timestep = 0.001;
+
+		// Set small collision envelopes for objects that will be created from now on..
+		ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
+		ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
+	}
+
+
+			///
+			///Parser
+			/// - load settings from a .ces input file, with simulator settings in JSON format
+	bool ParseSettings(const char* filename)
+	{
+		try 
+		{
+			// Prepare  input stream and copy to char* buffer
+			ChStreamInAsciiFile settingfile(filename);
+			std::stringstream buffer;
+			buffer << settingfile.GetFstream().rdbuf();
+			std::string mstr = buffer.str();
+			const char* stringbuffer = mstr.c_str();
+
+			rapidjson::Document document;
+			document.Parse<0>( stringbuffer );
+			if (document.HasParseError())
+			{
+				std::string errstrA( (const char*)(&stringbuffer[ChMax(document.GetErrorOffset()-10,0)]) ); errstrA.resize(10);
+				std::string errstrB( (const char*)(&stringbuffer[document.GetErrorOffset()]) ); errstrB.resize(20);
+				throw (ChException("the file has bad JSON syntax," + std::string(document.GetParseError()) + " \n\n[...]" + errstrA + " <--- " + errstrB + "[...]\n" ));
+			}
+			if (!document.IsObject())
+				throw (ChException("the file is not a valid JSON document"));
+
+			char* token;
+
+			token = "solidworks_exported_model";
+			if (document.HasMember(token)) {
+				if (!document[token].IsString()) {throw (ChException( "Invalid filename string after '"+std::string(token)+"'"));}
+				this->solidworks_py_modelfile = document[token].GetString();
+			}
+			token = "drum_rpm";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->drumspeed_rpm   = document[token].GetDouble();
+				this->drumspeed_radss = drumspeed_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
+			}
+			token = "save_each_Nsteps";
+			if (document.HasMember(token)) {
+				if (!document[token].IsInt()) {throw (ChException( "Invalid integer number after '"+std::string(token)+"'"));}
+				this->saveEachNframes = document[token].GetInt();
+			}
+			token = "save_dataset";
+			if (document.HasMember(token)) {
+				if (!document[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+				this->save_dataset = document[token].GetBool();
+			}
+			token = "save_irrlicht_screenshots";
+			if (document.HasMember(token)) {
+				if (!document[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+				this->save_irrlicht_screenshots = document[token].GetBool();
+			}
+			token = "save_POV_screenshots";
+			if (document.HasMember(token)) {
+				if (!document[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+				this->save_POV_screenshots = document[token].GetBool();
+			}
+			token = "timestep";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->timestep = document[token].GetDouble();
+			}
+			token = "surface_drum_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_drum_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_drum_rolling_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_drum_rolling_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_drum_spinning_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_drum_spinning_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_drum_restitution";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_drum_restitution = (float)document[token].GetDouble();
+			}
+			token = "surface_plate_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_plate_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_plate_rolling_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_plate_rolling_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_plate_spinning_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_plate_spinning_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_plate_restitution";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_plate_restitution = (float)document[token].GetDouble();
+			}
+			token = "surface_particles_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_particles_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_particles_rolling_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_particles_rolling_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_particles_spinning_friction";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_particles_spinning_friction = (float)document[token].GetDouble();
+			}
+			token = "surface_particles_restitution";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->surface_particles_restitution = (float)document[token].GetDouble();
+			}
+			token = "default_collision_envelope";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				ChCollisionModel::SetDefaultSuggestedEnvelope(document[token].GetDouble());
+			}
+			token = "default_collision_margin";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				ChCollisionModel::SetDefaultSuggestedMargin(document[token].GetDouble());
+			}
+			token = "CES_forces";
+			if (document.HasMember(token)) {
+				if (!document[token].IsObject()) {throw (ChException( "Invalid object after '"+std::string(token)+"'"));}
+				rapidjson::Value& mval = document[token];
+				token = "U";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->ces_forces.U = mval[token].GetDouble();
+				}
+				token = "L";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->ces_forces.L = mval[token].GetDouble();
+				}
+				token = "alpha_deg";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->ces_forces.alpha = (CH_C_PI/180)*mval[token].GetDouble();
+				}
+				token = "drum_diameter";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->ces_forces.drumdiameter = (CH_C_PI/180)*mval[token].GetDouble();
+				}
+				token = "drum_width";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->ces_forces.drum_width = (CH_C_PI/180)*mval[token].GetDouble();
+				}
+				token = "electrode_diameter";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->ces_forces.electrodediameter = (CH_C_PI/180)*mval[token].GetDouble();
+				}
+			}
+			token = "emitter";
+			if (document.HasMember(token)) {
+				if (!document[token].IsObject()) {throw (ChException( "Invalid object after '"+std::string(token)+"'"));}
+				rapidjson::Value& mval = document[token];
+				token = "outlet_height";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletHeight() = mval[token].GetDouble();
+				}
+				token = "outlet_width";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletWidth() = mval[token].GetDouble();
+				}
+				token = "particles_per_second";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+					this->emitter.ParticlesPerSecond() = mval[token].GetDouble();
+				}
+				token = "use_particle_reservoir";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+					this->emitter.SetUseParticleReservoir( mval[token].GetBool() );
+				}
+				token = "particle_reservoir";
+				if (mval.HasMember(token)) {
+					if (!mval[token].IsInt()) {throw (ChException( "Invalid integer after '"+std::string(token)+"'"));}
+					this->emitter.ParticleReservoirAmount() = mval[token].GetInt();
+				}
+				
+			}
+		}
+		catch (ChException me)
+		{
+			GetLog()<< "ERROR loading settings file: \n   " << filename << "\n Reason: " << me.what() << "\n\n"; 
+		}
 
 	}
 
@@ -353,13 +616,13 @@ public:
 				mrigidBody->SetWvel_par(rand_angvel);
 				mrigidBody->SetMass(sphmass);
 				mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
-				mrigidBody->SetFriction(0.2f);
-				mrigidBody->SetImpactC(0.75f);
+				mrigidBody->SetFriction(surface_particles_friction);
+				mrigidBody->SetImpactC(surface_particles_restitution);
 				mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 				
 				       
-				mrigidBody->SetRollingFriction(0.2);
-				mrigidBody->SetSpinningFriction(0.2);
+				mrigidBody->SetRollingFriction(surface_particles_rolling_friction);
+				mrigidBody->SetSpinningFriction(surface_particles_spinning_friction);
 
 
 				// Define a collision shape 
@@ -404,8 +667,8 @@ public:
 				mrigidBody->SetWvel_par(rand_angvel);
 				mrigidBody->SetMass(sphmass2);
 				mrigidBody->SetInertiaXX(ChVector<>(sphinertia2,sphinertia2,sphinertia2));
-				mrigidBody->SetFriction(0.2f);
-				//mrigidBody->SetImpactC(0.75f); 
+				mrigidBody->SetFriction(surface_particles_friction);
+				mrigidBody->SetImpactC(surface_particles_restitution); 
 				mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 				      
 				// Define a collision shape 
@@ -445,12 +708,12 @@ public:
 				mrigidBody->SetWvel_par(rand_angvel);
 				mrigidBody->SetMass(sphmass3);
 				mrigidBody->SetInertiaXX(ChVector<>(sphinertia3,sphinertia3,sphinertia3));
-				mrigidBody->SetFriction(0.2f);
-				//mrigidBody->SetImpactC(0.75f); 
+				mrigidBody->SetFriction(surface_particles_friction);
+				mrigidBody->SetImpactC(surface_particles_restitution); 
 				mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
 				      
-				// mrigidBody->SetRollingFriction(0.1);
-				// mrigidBody->SetSpinningFriction(0.1);
+				// mrigidBody->SetRollingFriction(surface_particles_rolling_friction);
+				// mrigidBody->SetSpinningFriction(surface_particles_spinning_friction);
 
 
 				// Define a collision shape 
@@ -503,12 +766,15 @@ public:
 				mrigidBody->SetPos(rand_position);
 				mrigidBody->SetMass(sphmass);
 				mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
-				mrigidBody->SetFriction(0.4f);
-				mrigidBody->SetImpactC(0.0f); 
+				mrigidBody->SetFriction(surface_particles_friction);
+				mrigidBody->SetImpactC(surface_particles_restitution); 
 
 				// Define a collision shape 
 				mrigidBody->GetCollisionModel()->ClearModel();
 				mrigidBody->GetCollisionModel()->AddBox(sphrad*2*xscale, sphrad*2*yscale, sphrad*2*yscale);
+				// oppure aggiungi molte sfere che 'approssimano' la sagoma, es per cilindro:
+				//for (int i=0; i<5; ++i)
+				//	mrigidBody->GetCollisionModel()->AddSphere(sphrad, &ChVector<>(i*0.001,0,0));
 				mrigidBody->GetCollisionModel()->BuildModel();
 				mrigidBody->SetCollide(true);
 
@@ -543,8 +809,8 @@ public:
 				mrigidBody->SetPos(rand_position);
 				mrigidBody->SetMass(cylmass);
 				mrigidBody->SetInertiaXX(ChVector<>(cylinertia,cylinertia2,cylinertia));
-				mrigidBody->SetFriction(0.4f);
-				mrigidBody->SetImpactC(0.0f); 
+				mrigidBody->SetFriction(surface_particles_friction);
+				mrigidBody->SetImpactC(surface_particles_restitution); 
 
 				// Define a collision shape 
 				mrigidBody->GetCollisionModel()->ClearModel();
@@ -600,7 +866,7 @@ public:
 
 					// Multiply the default mass & intertia tensor by density (previously assumed =1)
 					
-					created_body->SetDensity(densityPlastic);
+					created_body->SetDensity((float)densityPlastic);
 					created_body->SetMass( created_body->GetMass() * densityPlastic);
 					created_body->SetInertiaXX( created_body->GetInertiaXX() * densityPlastic);
 				} 
@@ -616,7 +882,7 @@ public:
 
 					// Multiply the default mass & intertia tensor by density (previously assumed =1)
 			
-					created_body->SetDensity(densityMetal);
+					created_body->SetDensity((float)densityMetal);
 					created_body->SetMass( created_body->GetMass() * densityMetal);
 					created_body->SetInertiaXX( created_body->GetInertiaXX() * densityMetal);
 				}
@@ -690,7 +956,7 @@ public:
 			if (init_particle_speed)
 			{
 				created_body->SetPos_dt(ChVector<>(0,0,0));
-				//created_body->SetPos_dt(ChVector<>(STATIC_speed, 0,0));
+				//created_body->SetPos_dt(ChVector<>(drumspeed*(drumdiameter/2.0), 0,0));
 			}
 
 		}
@@ -742,225 +1008,6 @@ public:
 
 	}
 
-		///
-		/// Function that defines the forces on the debris ****ida
-		///
-	void apply_forces (	ChSystem* msystem,		// contains all bodies
-							ChCoordsys<>& drum_csys, // pos and rotation of drum 
-							double drumspeed,		 // speed of drum
-							double drumdiameter,
-							double h1,
-							double h2,
-							double L,
-							double electrodediameter,
-							double j,
-							double alpha,
-							double U,
-							double f,
-						
-
-
-							int totframes)		
-	{
-		char padnumber[100];
-		char filename[200];
-		sprintf(padnumber, "%d", (totframes+10000));
-		sprintf(filename, "output\\forces%s.dat", padnumber+1);
-		//ChStreamOutAsciiFile data_forces(filename);
-		ofstream test;
-		test.open("output\\test.dat",ios::app); 
-		
-
-
-
-		for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
-		{
-			ChBody* abody = (*msystem->Get_bodylist())[i];
-
-			bool was_a_particle = false;
-			ChSharedPtr<ElectricParticleProperty> electricproperties; // null by default
-
-			// Fetch the ElectricParticleProperty asset from the list of 
-			// assets that have been attached to the object, and retrieve the
-			// custom data that have been stored. ***ALEX
-			for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
-			{
-				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-				if (myasset.IsType<ElectricParticleProperty>())
-				{
-					// OK! THIS WAS A PARTICLE! ***ALEX
-					was_a_particle = true;		
-					electricproperties = myasset;
-				} 
-			}
-
-			// Do the computation of forces only on bodies that had 
-			// the 'ElectricParticleProperty' attached.. **ALEX
-			if(was_a_particle)
-			{
-
-				ChVector<> diam = electricproperties->Cdim; 
-				double sigma =    electricproperties->conductivity;
-
-				// Remember to reset 'user forces accumulators':
-				abody->Empty_forces_accumulators();
-
-				// initialize speed of air (steady, if outside fan stream): 
-				ChVector<> abs_wind(0,0,0);
-
-				// calculate the position of body COG with respect to the drum COG:
-				ChVector<> mrelpos = drum_csys.TrasformParentToLocal(abody->GetPos());
-				double distx=mrelpos.x;
-				double disty=mrelpos.y;
-				ChVector<> velocity=abody->GetPos_dt();
-				double velocityx=velocity.x;
-				double velocityy=velocity.y;
-				double velocityz=velocity.z;
-				//ChVector <> rot_speed=abody->GetWvel_par();
-				//double rot_speedz=rot_speed.z; //bisogna tirare fuori la componente attorno all'asse z globale della velocità di rotazione
-
-				double velocity_norm_sq=velocity.Length2();
-
-				//ChQuaternion<> rot_velocity=abody->GetRot_dt;
-				
-				// Polar coordinates of particles respect to the axis of the rotor, may be useful later **ALEX
-
-				double distance = pow(distx*distx+disty*disty,0.5);
-				double phi = atan2(disty,distx);
-				double phi2 = atan2(-velocity.y,velocity.x);
-				
-
-			
-
-				//
-				// STOKES FORCES
-				//
-
-
-				double average_rad = 0.5* electricproperties->Cdim.Length(); // Approximate to sphere radius. Ida: this can be improved, by having Stokes forces for three Cdim x y z values maybe 
-
-				ChVector<> StokesForce = electricproperties->StokesForce;
-				
-				electricproperties->StokesForce = (-6*CH_C_PI*eta*average_rad) * velocity;
-		
-				abody->Accumulate_force(StokesForce, abody->GetPos(), false);
-
-
-	            
-
-				//Calculating the analytical expressions of the electric field***ida
-
-				double xuno=distx*cos(alpha)+ disty*sin(alpha);//analytical parameter****ida
-				double yuno=disty*cos(alpha)- distx*sin(alpha);//analytical parameter****ida
-
-				double Ex=(((j-h1+xuno)/(pow((j-h1+xuno),2)+pow(yuno,2))+((j+h1-xuno)/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field x direction***ida
-				double Ey=((yuno/(pow((j-h1+xuno),2)+pow(yuno,2))-(yuno/(pow((j+h1-xuno),2)+pow(yuno,2)))*f));//analytical expression of the electric field y direction***ida
-				double Ez=0;
-
-				ChVector<> vE (Ex, Ey, Ez);
-				double E = vE.Length();
-
-	          
-				
-				//
-				//===== METAL FORCES ==========
-				//
-
-				if (electricproperties->material_type == ElectricParticleProperty::e_mat_metal)
-				{ 
-					// charge the particle? (contact w. drum)
-					if ((distx > 0) && (disty > 0))
-					{
-						if (electricproperties->chargeM == 0)
-						{
-						electricproperties->chargeM = 0.666666666666667*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E;
-						electricproperties->chargeM *= (1.0 - 0.3*ChRandom() );
-						
-						}
-					}
-
-					
-					ChVector<> ElectricForce = electricproperties->ElectricForce;
-
-					electricproperties->ElectricForce = 0.832 * electricproperties->chargeM * vE;
-
-					// switch off electric forces if too out-of-plane
-					if ((mrelpos.z > conveyor_width*0.5) || (mrelpos.z < -conveyor_width*0.5))
-						ElectricForce = 0; 
-
-					abody->Accumulate_force(ElectricForce, abody->GetPos(), false);
-
-
-				} // end if material==metal
-
-
-				//
-				//===== PLASTIC FORCES ==========
-				//
-
-			    
-
-				if (electricproperties->material_type == ElectricParticleProperty::e_mat_plastic) //forze sulle particelle non metalliche
-				{
-					
-
-					// charge the particle? (contact w. drum)
-					if ((distx > 0.04) && (disty > 0))
-					{
-						if (electricproperties->chargeP == 0)
-						{
-							electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*450000*(epsilonR/(epsilonR+2)); // charge
-							electricproperties->chargeP *= (1.0 - 0.3*ChRandom() );
-						}
-					} //15000000,750000, 
-					// discharge the particle? (contact w. blade)
-					if (distx < -(drumdiameter*0.5 -0.009) && (disty > -(drumdiameter*0.5 + 0.009)) || sqrt(pow(distx,2)+ pow(disty,2))> (1.03*drumdiameter*0.5))
-					{
-						electricproperties->chargeP = 0; // charge
-					}
-
-					ChVector<> ElectricImageForce = electricproperties->ElectricImageForce;
-
-
-					electricproperties->ElectricImageForce.x = -((pow( electricproperties->chargeP,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*cos(atan2(disty,distx)));
-					electricproperties->ElectricImageForce.y = -((pow( electricproperties->chargeP,2))/(4*CH_C_PI*epsilon*pow((2*average_rad),2))*sin(atan2(disty,distx)));
-					electricproperties->ElectricImageForce.z = 0;	
-							
-					
-					// switch off electric forces if too out-of-plane
-					if ((mrelpos.z > conveyor_width*0.5) || (mrelpos.z < -conveyor_width*0.5))
-						ElectricImageForce = 0; 
-
-
-					abody->Accumulate_force(ElectricImageForce, abody->GetPos(), false);
-					
-
-				   }  // end if material==plastic
-				
-
-				
-
-
-				//ChVector<> DragForce;
-				//DragForce.x = -CD*ro*velocity_norm_sq*CH_C_PI*diam.x*diam.y/2*cos(phi2);
-				//DragForce.y = CD*ro*velocity_norm_sq*CH_C_PI*diam.x*diam.y/2*sin(phi2);
-				//DragForce.z = 0;
-
-				//abody->Accumulate_force( DragForce, abody->GetPos(), false);
-
-				//ChVector<> LiftForce;
-				//LiftForce.x = CL*ro*velocity_norm_sq*CH_C_PI*diam.x*diam.y/2*sin(phi2);
-				//LiftForce.y = CL*ro*velocity_norm_sq*CH_C_PI*diam.x*diam.y/2*cos(phi2);
-				//LiftForce.z = 0;	
-			
-				//abody->Accumulate_force(LiftForce, abody->GetPos(), false);
-				
-
-			} // end if(was_a_particle) , i.e. a body with electrical asset
-
-		} // end for() loop on all bodies
-	}
-	 
 
 		///
 		/// Function for drawing forces
@@ -1130,8 +1177,8 @@ public:
 
 
 		// Set small collision envelopes for objects that will be created from now on..
-		ChCollisionModel::SetDefaultSuggestedEnvelope(0.002); 
-		ChCollisionModel::SetDefaultSuggestedMargin  (0.0008);
+		//ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
+		//ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
 
 
 	
@@ -1145,7 +1192,7 @@ public:
 		// 2) loads the .py file (as saved from SolidWorks) and fill the system.
 		try
 		{
-			my_python.ImportSolidWorksSystem("../CAD_conveyor/conveyor_Ida", mphysicalSystem);  // note, don't type the .py suffix in filename..
+			my_python.ImportSolidWorksSystem(this->solidworks_py_modelfile.c_str(), mphysicalSystem);  // note, don't use the .py suffix in filename..
 		}
 		catch (ChException myerror)
 		{
@@ -1193,6 +1240,9 @@ public:
 		else
 			nozzle_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
 
+		emitter_positions->Outlet() = nozzle_csys;
+		emitter_positions->Outlet().rot.Q_from_AngAxis(CH_C_PI_2, VECT_X); // rotate outlet 90° on x
+
 		
 		my_marker = mphysicalSystem.SearchMarker("centro_cilindro");
 		if (my_marker.IsNull())
@@ -1209,10 +1259,10 @@ public:
 			mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
 			mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 			mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-			mrigidBodyDrum->SetFriction(0.1f); 
-			mrigidBodyDrum->SetImpactC(0.75f);
-			//mrigidBodyDrum->SetRollingFriction(0.2f);
-			//mrigidBodyDrum->SetSpinningFriction(0.2f);
+			mrigidBodyDrum->SetFriction(surface_drum_friction); 
+			mrigidBodyDrum->SetImpactC(surface_drum_restitution);
+			mrigidBodyDrum->SetRollingFriction(surface_drum_rolling_friction);
+			mrigidBodyDrum->SetSpinningFriction(surface_drum_spinning_friction);
 		}
 		
 		//***Ida
@@ -1226,7 +1276,7 @@ public:
 			mrigidBodySplitter1->GetCollisionModel()->SetFamily(3); // rivedere 
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
-			mrigidBodySplitter1->SetFriction(0.9f); 
+			mrigidBodySplitter1->SetFriction(0.1f); 
 		}
 
 		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1");  
@@ -1238,7 +1288,7 @@ public:
 			mrigidBodySplitter2->GetCollisionModel()->SetFamily(3);// rivedere
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
-			mrigidBodySplitter2->SetFriction(0.9f); 
+			mrigidBodySplitter2->SetFriction(0.1f); 
 		}
 
 		ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1");  
@@ -1261,12 +1311,13 @@ public:
 			mrigidBodyConveyor->GetCollisionModel()->SetFamily(2);
 			mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 			mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
-			mrigidBodyConveyor->SetFriction(0.9f);
-			mrigidBodyConveyor->SetImpactC(0.75f);
+			mrigidBodyConveyor->SetFriction(surface_plate_friction);
+			mrigidBodyConveyor->SetImpactC(surface_plate_restitution);
+			mrigidBodyConveyor->SetRollingFriction(surface_plate_rolling_friction);
+			mrigidBodyConveyor->SetSpinningFriction(surface_plate_spinning_friction);
 		}
 
 
-		//***Ida
 		
 
 		//
@@ -1289,16 +1340,6 @@ public:
 
 		
 
-		//
-		// Create a collision shape for the rotating drum (end of the belt)
-		//
-
-	//	ChSharedPtr<ChBody> mrigidBodyDrum;
-		double drumradius = drumdiameter * 0.5;
-		//ChCoordsys<> drum_axis_coordsys(ChCoordsys<>(ChVector<>(conveyor_length/2, -drumradius-conv_thick/2,0)));
-
-		
-
 		// 
 		// Create a motor constraint between the cylinder and the truss
 		//
@@ -1313,7 +1354,7 @@ public:
 
 			mengine->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
 			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
-				mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+				mfun->Set_yconst(-drumspeed_radss);  // angular speed in [rad/s]
 
 			// Finally, do not forget to add the body to the system:
 			application.GetSystem()->Add(mengine);
@@ -1331,7 +1372,7 @@ public:
 
 			mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
 			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine2->Get_spe_funct()))
-				mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+				mfun->Set_yconst(-drumspeed_radss); // angular speed in [rad/s]
 
 			// Finally, do not forget to add the body to the system:
 			application.GetSystem()->Add(mengine2);
@@ -1397,6 +1438,20 @@ public:
 		// For enabling Irrlicht visualization of assets (that have been added so far)
 		//
 
+		class MyCreatorForAll : public ChCallbackPostCreation
+		{
+			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
+			{
+				irrlicht_application->AssetBind(mbody);
+				irrlicht_application->AssetUpdate(mbody);
+			}
+			irr::ChIrrApp* irrlicht_application;
+		};
+		MyCreatorForAll* mcreation_callback = new MyCreatorForAll;
+		mcreation_callback->irrlicht_application = &application;
+		emitter.SetCallbackPostCreation(mcreation_callback);
+
+
 		application.AssetBindAll();
 		application.AssetUpdateAll();
 		if (irr_cast_shadows)
@@ -1408,13 +1463,13 @@ public:
 		//
 		
 		application.SetStepManage(true);
-		application.SetTimestep(0.001);
+		application.SetTimestep(this->timestep);
 		
 		application.GetSystem()->SetIntegrationType(ChSystem::INT_ANITESCU);
-		application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD); // or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
+		application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD);// LCP_ITERATIVE_SOR_MULTITHREAD or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
 			// important! dt is small, and particles are small, so it's better to keep this small...
 		application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15);// not needed in INT_TASORA, only for INT_ANITESCU
-		application.GetSystem()->SetMinBounceSpeed(0.01);
+		application.GetSystem()->SetMinBounceSpeed(0.1);
 
 		application.GetSystem()->Set_G_acc(ChVector<>(0, -9.81, 0));
 
@@ -1436,6 +1491,7 @@ public:
 		
 		application.GetSystem()->ShowHierarchy(GetLog());
 
+
 		while(application.GetDevice()->run()) 
 		{
 			application.GetVideoDriver()->beginScene(true, true, SColor(255,140,161,192));
@@ -1446,21 +1502,14 @@ public:
 
 			if (!application.GetPaused())
 			{ 
-				
+
 				totframes++;
 
-				apply_forces (	&mphysicalSystem,		// contains all bodies
+				// Apply the forces caused by electrodes of the CES machine:
+
+				ces_forces.apply_forces (	&mphysicalSystem,		// contains all bodies
 								drum_csys,		 // pos and rotation of axis of drum (not rotating reference!)
-								drumspeed,		 // speed of drum
-								drumdiameter,
-								h1,
-								h2,
-								L,
-								electrodediameter,
-								j,
-								alpha,
-								U,
-								f,
+								drumspeed_radss, // speed of drum
 								totframes);
 
 			
@@ -1474,6 +1523,9 @@ public:
 				
 				// Continuosly create debris that fall on the conveyor belt
 				
+				// **ALEX*** new approach!
+				this->emitter.EmitParticles(mphysicalSystem, application.GetTimestep()); //***TEST***
+
 				if (debris_number <= max_numb_particles)
 				{
 				create_debris(	application.GetTimestep(), 
@@ -1490,10 +1542,10 @@ public:
 				// deleting the oldest ones, for performance
 				purge_debris (*application.GetSystem(),6);
 
-				// Maybe the user played with the slider and changed STATIC_speed...
+				// Maybe the user played with the slider and changed the speed of drum...
 				if (!mengine.IsNull())
 				  if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
-					mfun->Set_yconst(-STATIC_speed/(drumdiameter*0.5));
+					mfun->Set_yconst(-drumspeed_radss);  // angular speed in [rad/s]
 
 				// update the assets containing the trajectories, if any
 				if (receiver.checkbox_plottrajectories->isChecked())

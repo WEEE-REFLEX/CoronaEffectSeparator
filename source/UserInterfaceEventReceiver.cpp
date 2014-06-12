@@ -24,7 +24,6 @@ UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp,
 	scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
 					true, rect<s32>(560, 15, 700, 15+20), 0, 101);
 	scrollbar_flow->setMax(100);
-	//scrollbar_flow->setPos(25);
 	scrollbar_flow->setPos(((int)((mysimulator->STATIC_flow/1000.0 )*25)));
 	text_flow = application->GetIGUIEnvironment()->addStaticText(
 				L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
@@ -33,8 +32,7 @@ UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp,
 	scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(
 					true, rect<s32>(560, 40, 700, 40+20), 0, 102);
 	scrollbar_speed->setMax(100); 
-	//scrollbar_speed->setPos(72);
-    scrollbar_speed->setPos(((int)((mysimulator->STATIC_speed/2.0 )*67)));
+    scrollbar_speed->setPos(((int)((mysimulator->drumspeed_rpm/3.0 )*100)));
 	text_speed = application->GetIGUIEnvironment()->addStaticText(
 					L"Conv.vel. [m/s]:", rect<s32>(710,40,800,40+20), false);
 
@@ -70,8 +68,9 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 				if (id == 102) // id of 'speed' slider..
 				{
 					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-					simulator->STATIC_speed = 3.0* (((double)pos)/100);
-					char message[50]; sprintf(message,"Conv.vel. %2.2f [m/s]", simulator->STATIC_speed);
+					simulator->drumspeed_rpm = 3.0* (((double)pos)/100);
+					simulator->drumspeed_radss = simulator->drumspeed_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
+					char message[50]; sprintf(message,"Drum rpm %2.2f [m/s]", simulator->drumspeed_rpm);
 					text_speed->setText(core::stringw(message).c_str());
 				}
 		break;
@@ -102,6 +101,12 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 			application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( simulator->drum_csys.pos + ChVector<>(0.0,0.0, 4) ) );
 			application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( simulator->drum_csys.pos ) );	
 			matrix.buildProjectionMatrixOrthoLH(0.4f, 0.3f, 0.3f, 100.f);
+			application->GetSceneManager()->getActiveCamera()->setProjectionMatrix(matrix,true);
+			return true;
+		case irr::KEY_F5:	// camera will point to drum in orthographic projection (closeup)
+			application->GetSceneManager()->getActiveCamera()->setPosition( vector3dfCH( simulator->nozzle_csys.pos + ChVector<>(0.0,0.0, 4) ) );
+			application->GetSceneManager()->getActiveCamera()->setTarget  ( vector3dfCH( simulator->nozzle_csys.pos ) );	
+			matrix.buildProjectionMatrixOrthoLH(0.2f*0.4f, 0.2f*0.3f, 0.2f, 100.f);
 			application->GetSceneManager()->getActiveCamera()->setProjectionMatrix(matrix,true);
 			return true;
 

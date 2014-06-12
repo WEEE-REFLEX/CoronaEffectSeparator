@@ -27,16 +27,49 @@
 
 
 
+	/// Inherit form this class and pass an object to the PostCreation() 
+	/// functions of particle creator, to have the callback executed 
+	/// per each created particle. Ex. to add optional assets, custom
+	/// materials or settings.
+class ChCallbackPostCreation
+{
+public:
+		/// Implement this function if you want to provide the post creation callback.
+	virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords) = 0;
+};
+
+
+
 	/// BASE class for generators of random ChBody shapes
 class ChRandomShapeCreator : public ChShared
 {
 public:
-	ChRandomShapeCreator() {}
+	ChRandomShapeCreator() 
+		{
+			callback_post_creation = 0;
+		}
 
 			/// Function that creates a random ChBody particle each
 			/// time it is called. 
-			/// Note: it must be implemented by children classes!
+			/// Note: it MUST BE IMPLEMENTED by children classes!
 	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) = 0;
+
+			/// This function does RandomGenerate and also executes the
+			/// the custom callback, if provided. Usually no need to override.
+	virtual ChSharedPtr<ChBody> RandomGenerateAndCallbacks(ChCoordsys<> mcoords)
+		{
+			ChSharedPtr<ChBody> mbody = this->RandomGenerate(mcoords);
+
+			if (callback_post_creation)
+				callback_post_creation->PostCreation( mbody, mcoords);
+			return mbody;
+		}
+			/// Set the callback function to execute at each 
+			/// each particle generation
+	void SetCallbackPostCreation(ChCallbackPostCreation* mc) { callback_post_creation = mc;}
+
+private:
+	ChCallbackPostCreation* callback_post_creation;
 };
 
 
@@ -94,7 +127,7 @@ public:
 			/// time it is called.
 	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
 	{
-		ChSharedPtr<ChBodyEasyBox> mbody(new ChBodyEasyBox(x_size->GetRandom(), y_size->GetRandom(), z_size->GetRandom(), density->GetRandom(), true));
+		ChSharedPtr<ChBodyEasyBox> mbody(new ChBodyEasyBox(fabs(x_size->GetRandom()), fabs(y_size->GetRandom()), fabs(z_size->GetRandom()), fabs(density->GetRandom()), true));
 		mbody->SetCoord(mcoords);
 		return mbody;
 	};
@@ -155,13 +188,93 @@ private:
 	ChSmartPtr<ChDistribution> density;
 };
 
-/*
-	/// Class for generating spheres from different families, 
-	/// each with given probability
-class ChRandomShapeCreatorFromSamples : public ChRandomShapeCreator
+
+
+	/// Class for generating convex hulls with variable chordal size
+	/// and aspect ratios. By default uses constant distributions 
+	/// (all hulss are equally sized) but you can provide your distributions.
+class ChRandomShapeCreatorConvexHulls : public ChRandomShapeCreator
 {
 public:
-	ChRandomShapeCreatorFromSamples() 
+	ChRandomShapeCreatorConvexHulls() 
+	{
+		// defaults
+		npoints = 6;
+		chord       = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.01));
+		sizeratioYZ = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1.0));
+		sizeratioZ  = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1.0));
+		density     = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
+	}
+
+			/// Function that creates a random ChBody particle each
+			/// time it is called.
+	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
+	{
+		double mchord    = chord->GetRandom();
+		double msizeratioYZ = sizeratioYZ->GetRandom();
+		double msizeratioZ  = sizeratioZ->GetRandom();
+		
+		std::vector< ChVector<> > points;
+		points.resize(npoints);
+		double hsizex=0;
+		double hsizey=0;
+		double hsizez=0;
+		for (int ip = 0; ip < npoints; ++ip)
+		{
+			points[ip].x= ChRandom();
+			points[ip].y= ChRandom();
+			points[ip].z= ChRandom();
+			if (fabs(points[ip].x) > hsizex) hsizex=fabs(points[ip].x);
+			if (fabs(points[ip].y) > hsizey) hsizey=fabs(points[ip].y);
+			if (fabs(points[ip].z) > hsizez) hsizez=fabs(points[ip].z);
+		}
+		for (int ip = 0; ip < npoints; ++ip)
+		{
+			points[ip].x *= 0.5*mchord/hsizex;
+			points[ip].y *= msizeratioYZ*(0.5*mchord/hsizey);
+			points[ip].z *= msizeratioYZ*(0.5*mchord/hsizez)*msizeratioZ;
+		}
+
+		ChSharedPtr<ChBodyEasyConvexHull> mbody(new ChBodyEasyConvexHull(points, density->GetRandom(), true));
+		mbody->SetCoord(mcoords);
+		return mbody;
+	};
+
+			/// Set the number of random vertexes used to generate each random convex hull.
+			/// Note that the final number of vertexes in the hull might be lower since
+			/// random points that fall inside the convex hull are not used.
+	void SetNpoints(int mnpoints) {npoints = mnpoints;}
+			/// Set the statistical distribution for the radius.
+	void SetChordDistribution(ChSmartPtr<ChDistribution> mdistr) {chord = mdistr;}
+			/// Set the statistical distribution for scaling on both Y,Z widths (the lower <1, the thinner, as a needle).
+	void SetSizeRatioYZDistribution(ChSmartPtr<ChDistribution> mdistr) {sizeratioYZ = mdistr;}
+			/// Set the statistical distribution for scaling on both Z width (the lower <1, the flatter, as a chip).
+	void SetSizeRatioZDistribution(ChSmartPtr<ChDistribution> mdistr) {sizeratioZ = mdistr;}
+
+			/// Set the statistical distribution for the random density.
+	void SetDensityDistribution(ChSmartPtr<ChDistribution> mdistr) {density = mdistr;}
+
+private:
+	int npoints;
+	ChSmartPtr<ChDistribution> chord;
+	ChSmartPtr<ChDistribution> sizeratioYZ;
+	ChSmartPtr<ChDistribution> sizeratioZ;
+	ChSmartPtr<ChDistribution> density;
+};
+
+
+	/// Class for generating spheres from different families, 
+	/// each with given probability. It 'mixes' different 
+	/// ChRandomShapeGenerator sources (among these you can 
+	/// also put other ChRandomShapeCreatorFromFamilies to create 
+	/// tree-like families).
+	/// This can be used to make bi-modal or multi-modal distributions, 
+	/// for example suppose that you need a mixture of 30% spheres, with
+	/// their own size distribution, and 70% cubes, with their own distribution.
+class ChRandomShapeCreatorFromFamilies : public ChRandomShapeCreator
+{
+public:
+	ChRandomShapeCreatorFromFamilies() 
 		{
 			// defaults
 			Reset();
@@ -171,65 +284,63 @@ public:
 			/// time it is called.
 	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
 		{
-			if (particle_samples.size() ==0) 
+			if (family_generators.size() ==0) 
 				throw ChException("Error, cannot randomize particles from a zero length vector of samples");
 
-			ChSharedPtr<ChBody> sample = particle_samples[0];
+			ChSharedPtr<ChBody> sample; // default null
 			double rand = ::chrono::ChRandom();
-			for (int i=0; i <  cumulative_probability.size(); ++i)
+			for (unsigned int i=0; i <  cumulative_probability.size(); ++i)
 			{
 				if ( rand < cumulative_probability[i] )
 				{
-					sample = particle_samples[i];
+					sample = family_generators[i]->RandomGenerateAndCallbacks(mcoords);
 					break;
 				}
 			}
-			ChSharedPtr<ChBody> newbody(new ChBody);
-			newbody->Copy(sample.get_ptr());
 
-			newbody->SetCoord(mcoords);
+			sample->SetCoord(mcoords);
 			return sample;
 		};
 	
 			/// Call this BEFORE adding a set of samples via AddSample()
 	void Reset() 
 		{
-			probability.clear();
+			family_probability.clear();
 			cumulative_probability.clear();
 			sum = 0;
-			particle_samples.clear();
+			family_generators.clear();
 		}
 			/// Call this multiple times to add a set of samples.
 			/// Each sample is a body with a given probability. 
 			/// Finally, use Setup() after you used	AddSample N times	
 			/// The sum of probabilities should be 1; otherwise will be normalized.
-	void AddSample(ChSharedPtr<ChBody> msample, double mprobability)
+	void AddFamily(ChSharedPtr<ChRandomShapeCreator> family_generator, double mprobability)
 		{
-			probability.push_back(mprobability);
+			family_probability.push_back(mprobability);
 			sum += mprobability;
 			cumulative_probability.push_back(sum);
-			particle_samples.push_back(msample);
+			family_generators.push_back(family_generator);
 		}
 			/// Call this when you finished adding samples via AddSample()
 	void Setup()
 		{
-			if (probability.size() ==0) 
+			if (family_probability.size() ==0) 
 				return;
 			// normalize if integral of atomic probabilities not unitary
 			double scale = 1.0/sum;
-			for (int i= 0; i< probability.size(); ++i)
+			for (unsigned int i= 0; i< family_probability.size(); ++i)
 			{
-				probability[i] *= scale;
+				family_probability[i] *= scale;
 				cumulative_probability[i]*= scale;
 			}
 		}
 private:
-	std::vector<double> probability;
+	std::vector<double> family_probability;
 	std::vector<double> cumulative_probability;
 	double sum;
-	std::vector< ChSharedPtr<ChBody> > particle_samples;
+	std::vector< ChSharedPtr<ChRandomShapeCreator> > family_generators;
 };
-*/
+
 
 
 
@@ -305,7 +416,7 @@ public:
 			/// time it is called. 
 	virtual ChVector<> RandomPosition() 
 		{
-			ChVector<> localp = ChVector<>(ChRandom()*width,ChRandom()*height, 0);
+			ChVector<> localp = ChVector<>(ChRandom()*width-0.5*width, ChRandom()*height-0.5*height, 0);
 			return outlet.TrasformLocalToParent(localp);
 		}
 			/// Access the coordinate system of the rectangular outlet. 
@@ -379,6 +490,9 @@ public:
 			particle_positioner  = ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
 			particle_aligner     = ChSharedPtr<ChRandomParticleAlignmentUniform> (new ChRandomParticleAlignmentUniform);
 			creation_callback	 = 0;
+			use_praticle_reservoir = false;
+			particle_reservoir = 1000;
+			created_particles	= 0;
 		}
 
 			/// Function that creates random particles with random shape, position
@@ -395,30 +509,28 @@ public:
 			// create the particles for this timestep
 			for (int i = 0; i < particles_per_step; ++i)
 			{
+				if ((use_praticle_reservoir)&&(this->particle_reservoir <= 0))
+					return;
+
 				ChCoordsys<> mcoords;
 				mcoords.pos = particle_positioner->RandomPosition();
 				mcoords.rot = particle_aligner->RandomAlignment();
 
-				ChSharedPtr<ChBody> mbody = particle_creator->RandomGenerate(mcoords);
+				ChSharedPtr<ChBody> mbody = particle_creator->RandomGenerateAndCallbacks(mcoords);
 
 				if (this->creation_callback)
 					this->creation_callback->PostCreation(mbody, mcoords);
 
 				msystem.Add(mbody);
+
+				--this->particle_reservoir;
+				++this->created_particles;
 			}
 		}
 
-			/// Inherit form this class and pass an object to the PostCreation() function
-			/// to have the callback executed per each created particle.
-	class ChPostCreationCallback
-	{
-	public:
-			/// Implement this function if you want to provide the post creation callback.
-		virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords) = 0;
-	};
 			/// Pass an object from a ChPostCreationCallback-inherited class if you want to 
 			/// set additional stuff on each created particle (ex.set some random asset, set some random material, or such)
-	void SetPostCreationCallback(ChPostCreationCallback* mcallback) {this->creation_callback = mcallback;}
+	void SetCallbackPostCreation(ChCallbackPostCreation* mcallback) {this->creation_callback = mcallback;}
 
 			/// Set the particle creator, that is an object whose class is
 			/// inherited from ChRandomShapeCreator
@@ -433,12 +545,23 @@ public:
 			/// Access the flow rate, measured as n.of particles per second.
 	double& ParticlesPerSecond() {return particles_per_second;}
 
+			/// Turn on this to limit the limit on max amount of particles.
+	void SetUseParticleReservoir(bool ml) {this->use_praticle_reservoir = ml;}
+
+			/// Access the max number of particles to create - after this goes to 0, the creation stops.
+			/// Remember to turn on this limit with SetLimitParticleAmount()
+	int& ParticleReservoirAmount() {return particle_reservoir;}
+
 private:
 	double particles_per_second;
 	ChSharedPtr<ChRandomShapeCreator>	   particle_creator;
 	ChSharedPtr<ChRandomParticlePosition>  particle_positioner;
 	ChSharedPtr<ChRandomParticleAlignment> particle_aligner;
-	ChPostCreationCallback* creation_callback;
+	ChCallbackPostCreation* creation_callback;
+	
+	int  particle_reservoir;
+	bool use_praticle_reservoir;
+	int  created_particles;
 };
 
 

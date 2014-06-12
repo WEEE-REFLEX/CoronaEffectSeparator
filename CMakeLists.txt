@@ -46,7 +46,9 @@ ADD_EXECUTABLE(conveyor     	source/conveyor_Ida.cpp
 				source/SimulatorCES.h				
 				source/UserInterfaceEventReceiver.cpp
 				source/UserInterfaceEventReceiver.h
-				source/ElectricParticleProperty.h )
+				source/ElectricParticleProperty.h
+				source/ElectricForcesCES.h
+				source/ChParticleEmitter.h )
 
 
 

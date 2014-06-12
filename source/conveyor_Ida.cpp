@@ -43,6 +43,9 @@ int main(int argc, char* argv[])
 	// Create a simulator object
 	SimulatorCES mysimulator;
 
+	// Load settings from file, if any
+	mysimulator.ParseSettings("../CAD_conveyor/settings.ces");
+
 	// Initialize and execute the simulation
 	mysimulator.simulate();
 
