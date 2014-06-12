@@ -1,0 +1,40 @@
+{
+	"solidworks_exported_model"	: "../CAD_conveyor/conveyor_Ida",
+    "drum_rpm"					: 44.8,
+    "voltage"					: 30000,
+	"save_each_Nsteps"			: 3,
+    "save_dataset"				: false,
+    "save_irrlicht_screenshots"	: false,
+    "save_POV_screenshots"		: false,
+	"timestep"					: 0.001,
+	"surface_drum_friction" 			: 0.5,
+	"surface_drum_rolling_friction" 	: 0,
+	"surface_drum_spinning_friction"	: 0,
+	"surface_drum_restitution" 			: 0,
+	"surface_plate_friction" 			: 0.2,
+	"surface_plate_rolling_friction"	: 0,
+	"surface_plate_spinning_friction"	: 0,
+	"surface_plate_restitution" 		: 0,
+	"surface_particles_friction" 		: 0.2,
+	"surface_particles_rolling_friction" : 0,
+	"surface_particles_spinning_friction" : 0,
+	"surface_particles_restitution" 	: 0,
+	"default_collision_envelope" 	: 0.001,
+	"default_collision_margin" 		: 0.0005,
+	"CES_forces" : 	{
+						"U"				: 30000,
+						"L"				: 0.267,
+						"alpha_deg" 	: 30,
+						"drum_diameter"	: 0.320,
+						"drum_width"	: 0.3,
+						"electrodediameter": 0.038
+					},
+	"emitter" : 	{
+						"outlet_height"	: 0.1,
+						"outlet_width"	: 0.182,
+						"particles_per_second"	: 1000,
+						"use_particle_reservoir" : true,
+						"particle_reservoir" : 100	
+					}
+}
+
