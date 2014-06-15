@@ -26,10 +26,18 @@
 #include "physics/ChBodyEasy.h"
 
 
+/// Namespace for helper classes that build a system for generating
+/// flows of particles. This system heavily relies on statistical
+/// approaches, for example positions, rotations, shapes of particles
+/// can be generated according to statistical distributions.
+namespace particlefactory
+{
 
-	/// Inherit form this class and pass an object to the PostCreation() 
+
+
+	/// Inherit from this class and pass an object to the PostCreation() 
 	/// functions of particle creator, to have the callback executed 
-	/// per each created particle. Ex. to add optional assets, custom
+	/// per each created particle. Ex. use this to add optional assets, custom
 	/// materials or settings.
 class ChCallbackPostCreation
 {
@@ -47,6 +55,8 @@ public:
 	ChRandomShapeCreator() 
 		{
 			callback_post_creation = 0;
+			add_collision_shape = true;
+			add_visualization_asset = true;
 		}
 
 			/// Function that creates a random ChBody particle each
@@ -68,8 +78,20 @@ public:
 			/// each particle generation
 	void SetCallbackPostCreation(ChCallbackPostCreation* mc) { callback_post_creation = mc;}
 
-private:
+			/// Set if the created particles must include the collision	
+			/// shape(s). Note that this is ON by default. Switching off will
+			/// turn off the collision.
+	void SetAddCollisionShape(bool addcoll) { this->add_collision_shape = addcoll;}
+
+			/// Set if the created particles must include the visualization
+			/// asset(s). This is ON by default. Switching off might be more 
+			/// memory efficient for very large simulations that are batch-processed only.
+	void SetAddVisualizationAsset(bool addvisual) { this->add_visualization_asset = addvisual;}
+
+protected:
 	ChCallbackPostCreation* callback_post_creation;
+	bool add_collision_shape;
+	bool add_visualization_asset;
 };
 
 
@@ -83,27 +105,31 @@ public:
 	ChRandomShapeCreatorSpheres() 
 	{
 		// defaults
-		radius  = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.01));
-		density = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
+		diameter = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.02));
+		density  = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
 	}
 
 			/// Function that creates a random ChBody particle each
 			/// time it is called.
 	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
 	{
-		ChSharedPtr<ChBodyEasySphere> mbody(new ChBodyEasySphere(radius->GetRandom(), density->GetRandom(),true));
+		double mrad = 0.5*diameter->GetRandom();
+		ChSharedPtr<ChBodyEasySphere> mbody(new ChBodyEasySphere(mrad, 
+											density->GetRandom(), 
+											this->add_collision_shape, 
+											this->add_visualization_asset));
 		mbody->SetCoord(mcoords);
 		return mbody;
 	};
 
-			/// Set the statistical distribution for the random radius.
-	void SetRadiusDistribution(ChSmartPtr<ChDistribution> mdistr) {radius = mdistr;}
+			/// Set the statistical distribution for the random diameter.
+	void SetDiameterDistribution(ChSmartPtr<ChDistribution> mdistr) {diameter = mdistr;}
 
 			/// Set the statistical distribution for the random density.
 	void SetDensityDistribution(ChSmartPtr<ChDistribution> mdistr) {density = mdistr;}
 
 private:
-	ChSmartPtr<ChDistribution> radius;
+	ChSmartPtr<ChDistribution> diameter;
 	ChSmartPtr<ChDistribution> density;
 };
 
@@ -127,7 +153,13 @@ public:
 			/// time it is called.
 	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
 	{
-		ChSharedPtr<ChBodyEasyBox> mbody(new ChBodyEasyBox(fabs(x_size->GetRandom()), fabs(y_size->GetRandom()), fabs(z_size->GetRandom()), fabs(density->GetRandom()), true));
+		ChSharedPtr<ChBodyEasyBox> mbody(new ChBodyEasyBox(
+							fabs(x_size->GetRandom()), 
+							fabs(y_size->GetRandom()), 
+							fabs(z_size->GetRandom()), 
+							fabs(density->GetRandom()), 
+							this->add_collision_shape, 
+							this->add_visualization_asset));
 		mbody->SetCoord(mcoords);
 		return mbody;
 	};
@@ -149,7 +181,7 @@ private:
 	ChSmartPtr<ChDistribution> density;
 };
 
-	/// Class for generating cylinders with variable radii
+	/// Class for generating cylinders with variable diameter
 	/// and length. By default uses constant distributions 
 	/// (all cylinders are equal) but you can provide your distributions.
 class ChRandomShapeCreatorCylinders : public ChRandomShapeCreator
@@ -158,7 +190,7 @@ public:
 	ChRandomShapeCreatorCylinders() 
 	{
 		// defaults
-		radius         = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.01));
+		diameter       = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.02));
 		lenght_factor  = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(2.0));
 		density = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
 	}
@@ -167,23 +199,28 @@ public:
 			/// time it is called.
 	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
 	{
-		double rad    = radius->GetRandom();
-		double height = lenght_factor->GetRandom() * rad;
-		ChSharedPtr<ChBodyEasyCylinder> mbody(new ChBodyEasyCylinder(rad,height, density->GetRandom(), true));
+		double rad    = 0.5*diameter->GetRandom();
+		double height = lenght_factor->GetRandom() * 2.0*rad;
+		ChSharedPtr<ChBodyEasyCylinder> mbody(new ChBodyEasyCylinder(
+							rad,
+							height, 
+							density->GetRandom(), 
+							this->add_collision_shape, 
+							this->add_visualization_asset));
 		mbody->SetCoord(mcoords);
 		return mbody;
 	};
 
-			/// Set the statistical distribution for the radius.
-	void SetRadiusDistribution(ChSmartPtr<ChDistribution> mdistr) {radius = mdistr;}
-			/// Set the statistical distribution for the lenght ratio (lenght = radius*length_factor).
+			/// Set the statistical distribution for the diameter.
+	void SetDiameterDistribution(ChSmartPtr<ChDistribution> mdistr) {diameter = mdistr;}
+			/// Set the statistical distribution for the lenght ratio (lenght = diameter*length_factor).
 	void SetLenghtFactorDistribution(ChSmartPtr<ChDistribution> mdistr) {lenght_factor = mdistr;}
 
 			/// Set the statistical distribution for the random density.
 	void SetDensityDistribution(ChSmartPtr<ChDistribution> mdistr) {density = mdistr;}
 
 private:
-	ChSmartPtr<ChDistribution> radius;
+	ChSmartPtr<ChDistribution> diameter;
 	ChSmartPtr<ChDistribution> lenght_factor;
 	ChSmartPtr<ChDistribution> density;
 };
@@ -235,7 +272,11 @@ public:
 			points[ip].z *= msizeratioYZ*(0.5*mchord/hsizez)*msizeratioZ;
 		}
 
-		ChSharedPtr<ChBodyEasyConvexHull> mbody(new ChBodyEasyConvexHull(points, density->GetRandom(), true));
+		ChSharedPtr<ChBodyEasyConvexHull> mbody(new ChBodyEasyConvexHull(
+							points, 
+							density->GetRandom(), 
+							this->add_collision_shape, 
+							this->add_visualization_asset));
 		mbody->SetCoord(mcoords);
 		return mbody;
 	};
@@ -261,6 +302,106 @@ private:
 	ChSmartPtr<ChDistribution> sizeratioZ;
 	ChSmartPtr<ChDistribution> density;
 };
+
+
+
+	/// Class for generating worm-like particles, optionally helically twisted.
+	/// This can be used, for example, to generate shavings or chips as 
+	/// those created in milling and grinding processes, etc.
+	/// This basic class uses a row of small spheres to approximate the
+	/// chip shape, in sake of high computational performance in collisions
+	/// etc.
+class ChRandomShapeCreatorShavings : public ChRandomShapeCreator
+{
+public:
+	ChRandomShapeCreatorShavings() 
+	{
+		// defaults
+		spacing_factor = 0.5;
+		diameter    = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.02));
+		twistU      = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.00));
+		twistV      = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.00));
+		lengthratio = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(3.0));
+		density     = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
+	}
+
+			/// Function that creates a random ChBody particle each
+			/// time it is called.
+	virtual ChSharedPtr<ChBody> RandomGenerate(ChCoordsys<> mcoords) 
+	{
+		double mtwistU		= twistU->GetRandom();
+		double mtwistV		= twistV->GetRandom();
+		double mdiameter    = diameter->GetRandom();
+		double mlengthratio = ChMax(1.0,lengthratio->GetRandom());
+		double mlength		= mdiameter * mlengthratio;
+		double mlengthsweep	= mlength-mdiameter;
+		double targetinterval = mdiameter*spacing_factor;
+		double nintervals   = ceil(mlengthsweep/targetinterval);
+		double realinterval  = mlengthsweep / nintervals;
+		unsigned int npoints = (unsigned int)nintervals+1;
+
+		std::vector< ChVector<> > points;
+		points.resize(npoints);
+		std::vector< double > radii;
+		radii.resize(npoints);
+		
+		ChFrame<> localframe;
+		for (unsigned int ip = 0; ip < npoints; ++ip)
+		{
+			radii[ip] = 0.5*mdiameter;
+			points[ip]= localframe.GetPos();
+			// compute displacement to next sphere:
+			ChFrame<> displacement;
+			displacement.SetPos( ChVector<>(realinterval, 0,0)); // shift on x
+			ChQuaternion<> mrotU;
+			mrotU.Q_from_AngY(realinterval*mtwistU);
+			ChQuaternion<> mrotV;
+			mrotV.Q_from_AngX(realinterval*mtwistV);
+			displacement.SetRot(mrotU % mrotV); // rotate on z and y
+			localframe.ConcatenatePostTransformation(displacement);
+		}
+		
+		ChSharedPtr<ChBodyEasyClusterOfSpheres> mbody(new ChBodyEasyClusterOfSpheres(
+							points, 
+							radii, 
+							density->GetRandom(), 
+							this->add_collision_shape, 
+							this->add_visualization_asset));
+
+		GetLog() << "Diameter:" << mdiameter << " length:" << mlength << " mass:" << mbody->GetMass() << "\n  inertiaXX" << mbody->GetInertiaXX() << "\n inertiaXY:" <<  mbody->GetInertiaXY() << "\n";
+
+		mbody->SetCoord(mcoords);
+		return mbody;
+	};
+
+			/// Since these worm-like structures are approximated with spheres,
+			/// this settings tell how many spheres do you want along the line.
+			/// To keep things more intuitive, this 'spacing' value means the 
+			/// following: spacing between spheres = diameter * spacing_factor.
+			/// The lower, the more precise the approximation, but the more the
+			/// computational time for collisions. Usually, good values are in 0.4-0.8 range.
+			/// The spacing might be adjusted automatically to match the end of the shaving, btw.
+	void SetSpheresSpacingFactor(double md) {spacing_factor = md;}
+			/// Set the statistical distribution for the diameter.
+	void SetDiameterDistribution(ChSmartPtr<ChDistribution> mdistr) {diameter = mdistr;}
+			/// Set the statistical distribution for the length/diameter ratio.
+	void SetLengthRatioDistribution(ChSmartPtr<ChDistribution> mdistr) {lengthratio = mdistr;}
+			/// Set the statistical distribution for the twist curvature of line (u direction). Curvature=1/radius
+	void SetTwistDistributionU(ChSmartPtr<ChDistribution> mdistr) {twistU = mdistr;}
+			/// Set the statistical distribution for the twist curvature of line (v direction). Curvature=1/radius
+	void SetTwistDistributionV(ChSmartPtr<ChDistribution> mdistr) {twistV = mdistr;}
+			/// Set the statistical distribution for the random density.
+	void SetDensityDistribution(ChSmartPtr<ChDistribution> mdistr) {density = mdistr;}
+
+private:
+	double spacing_factor;
+	ChSmartPtr<ChDistribution> diameter;
+	ChSmartPtr<ChDistribution> twistU;
+	ChSmartPtr<ChDistribution> twistV;
+	ChSmartPtr<ChDistribution> lengthratio;
+	ChSmartPtr<ChDistribution> density;
+};
+
 
 
 	/// Class for generating spheres from different families, 
@@ -469,6 +610,68 @@ private:
 
 
 
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	/// BASE class for generators of random particle velocities.
+	/// By default it simply always returns Vxyz={0,0,0}, so it
+	/// it is up to sub-classes to implement more sophisticated randomizations.
+class ChRandomParticleVelocity : public ChShared
+{
+public:
+	ChRandomParticleVelocity() {}
+
+			/// Function that creates a random velocity each
+			/// time it is called. 
+			/// This base behavior simply uses zero velocity by default. 
+			/// Children classes implmeent more advanced velocity randomizations.
+	virtual ChVector<> RandomVelocity() {return VNULL;}
+
+};
+
+
+	/// Generator of random particle velocities with constant direction.
+	/// Modulus is constant by default, too, but it can be set as 
+	/// randomized via a statistical distribution.
+class ChRandomParticleVelocityConstantDirection : public ChRandomParticleVelocity
+{
+public:
+	ChRandomParticleVelocityConstantDirection() 
+			{
+				direction = VECT_X;
+				modulus = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.1));
+			}
+
+			/// Function that creates a random velocity each
+			/// time it is called.
+	virtual ChVector<> RandomVelocity() 
+			{
+				return direction*modulus->GetRandom();
+			}
+
+			/// Set the direction for all the randomized velocities		
+	void SetDirection(ChVector<> mdir) { direction = mdir.GetNormalized();}
+
+			/// Set the statistical distribution for the modulus of velocities
+	void SetModulusDistribution(ChSmartPtr<ChDistribution> mdistr) {modulus = mdistr;}
+			/// Set the modulus of velocities as a constant value
+	void SetModulusDistribution(double mval) 
+			{
+				modulus = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(mval));
+			}
+private:
+	ChVector<> direction;
+	ChSmartPtr<ChDistribution> modulus;
+};
+
+
+
+
+
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -489,6 +692,8 @@ public:
 			particle_creator     = ChSharedPtr<ChRandomShapeCreatorSpheres>(new ChRandomShapeCreatorSpheres);
 			particle_positioner  = ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
 			particle_aligner     = ChSharedPtr<ChRandomParticleAlignmentUniform> (new ChRandomParticleAlignmentUniform);
+			particle_velocity    = ChSharedPtr<ChRandomParticleVelocity> (new ChRandomParticleVelocity);
+			particle_angular_velocity = ChSharedPtr<ChRandomParticleVelocity> (new ChRandomParticleVelocity);
 			creation_callback	 = 0;
 			use_praticle_reservoir = false;
 			particle_reservoir = 1000;
@@ -517,6 +722,9 @@ public:
 				mcoords.rot = particle_aligner->RandomAlignment();
 
 				ChSharedPtr<ChBody> mbody = particle_creator->RandomGenerateAndCallbacks(mcoords);
+				
+				mbody->SetPos_dt(particle_velocity->RandomVelocity());
+				mbody->SetWvel_par(particle_angular_velocity->RandomVelocity());
 
 				if (this->creation_callback)
 					this->creation_callback->PostCreation(mbody, mcoords);
@@ -542,6 +750,12 @@ public:
 			/// Set the particle aligner, that generates different rotations for each particle
 	void SetParticleAligner   (ChSharedPtr<ChRandomParticleAlignment> mc) {particle_aligner = mc;}
 
+			/// Set the generator of particle velocities, that generates different initial speed for each particle
+	void SetParticleVelocity   (ChSharedPtr<ChRandomParticleVelocity> mc) {particle_velocity = mc;}
+			
+			/// Set the generator of angular velocities, for different initial angular velocity for each particle
+	void SetParticleAngularVelocity  (ChSharedPtr<ChRandomParticleVelocity> mc) {particle_angular_velocity = mc;}
+
 			/// Access the flow rate, measured as n.of particles per second.
 	double& ParticlesPerSecond() {return particles_per_second;}
 
@@ -557,12 +771,17 @@ private:
 	ChSharedPtr<ChRandomShapeCreator>	   particle_creator;
 	ChSharedPtr<ChRandomParticlePosition>  particle_positioner;
 	ChSharedPtr<ChRandomParticleAlignment> particle_aligner;
+	ChSharedPtr<ChRandomParticleVelocity>  particle_velocity;
+	ChSharedPtr<ChRandomParticleVelocity>  particle_angular_velocity;
 	ChCallbackPostCreation* creation_callback;
 	
 	int  particle_reservoir;
 	bool use_praticle_reservoir;
 	int  created_particles;
 };
+
+
+} // end of 'emitter' namespace
 
 
 #endif  // END of ChMath.h 
