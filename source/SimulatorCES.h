@@ -21,6 +21,7 @@
 #include "core/ChRealtimeStep.h"
 #include "core/ChMath.h"
 #include "core/ChDistribution.h"
+#include "collision/ChCCollisionSystemBullet.h"
 //#include <irrlicht.h>
 #include <fstream>
 #include "unit_PYTHON/ChPython.h"
@@ -35,11 +36,14 @@
 #include "UserInterfaceEventReceiver.h"
 #include "ChParticleEmitter.h"
 #include "ElectricForcesCES.h"
+#include "ParserEmitter.h"
+#include "ParserElectricForcesCES.h"
 
 // Use the namespace of Chrono
 
 using namespace chrono;
 using namespace postprocess;
+using namespace particlefactory;
 
 // Use the main namespaces of Irrlicht
 
@@ -141,6 +145,8 @@ public:
 	std::string solidworks_py_modelfile;
 	double timestep;
 
+
+
 		///
 		/// Create the SimulatorCES
 		/// and initialize member data
@@ -160,22 +166,24 @@ public:
 		emitter.SetParticleAligner(emitter_rotations);
 		
 			// initialize the randomizer for creations, with statistical distributions
-		/*
+		
 		//***TEST***
+		
 		ChSharedPtr<ChRandomShapeCreatorBoxes> mcreator1(new ChRandomShapeCreatorBoxes);
-		mcreator1->SetXsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.002, 1.0)) );
-		mcreator1->SetYsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.002, 1.0)) );
-		mcreator1->SetZsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.002, 1.0)) );
+		mcreator1->SetXsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.004, 1.5)) );
+		mcreator1->SetYsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.004, 1.5)) );
+		mcreator1->SetZsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.004, 1.5)) );
 
 		ChSharedPtr<ChRandomShapeCreatorCylinders> mcreator3(new ChRandomShapeCreatorCylinders);
-		mcreator3->SetRadiusDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.002, 0.0002)) );
-		mcreator3->SetLenghtFactorDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(4, 4/2.25)) );
+		mcreator3->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.004, 0.004)) );
+		mcreator3->SetLenghtFactorDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(5, 5)) );
 
 		ChSharedPtr<ChRandomShapeCreatorConvexHulls> mcreator4(new ChRandomShapeCreatorConvexHulls);
 		mcreator4->SetChordDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(0.01, 0.003)) );
 		mcreator4->SetSizeRatioYZDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(1.0, 0.3)) );
 		mcreator4->SetNpoints(14);
 
+		/*
 		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
 		mcreatorTot->AddFamily(mcreator2, 0.3);
 		mcreatorTot->AddFamily(mcreator3, 0.7);
@@ -183,9 +191,9 @@ public:
 		*/
 
 		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator2(new ChRandomShapeCreatorSpheres);
-		mcreator2->SetRadiusDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(0.002, 0.002/3.25)) );
+		mcreator2->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.004, 0.004)) );
 
-		class MyCreatorFamily1 : public ChCallbackPostCreation
+		class MyCreatorFamily2 : public ChCallbackPostCreation
 		{
 			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
 			{
@@ -194,12 +202,51 @@ public:
 				mbody->AddAsset(mtexture);
 			}
 		};
-		MyCreatorFamily1* callback_family1 = new MyCreatorFamily1;
+		MyCreatorFamily2* callback_family2 = new MyCreatorFamily2;
 
-		mcreator2->SetCallbackPostCreation(callback_family1);
+		mcreator2->SetCallbackPostCreation(callback_family2);
 
-		emitter.SetParticleCreator(mcreator2);
+
+
+		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator6(new ChRandomShapeCreatorSpheres);
+		mcreator6->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.004, 0.008)) );
+
+		class MyCreatorFamily6 : public ChCallbackPostCreation
+		{
+			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
+			{
+				ChSharedPtr<ChTexture> mtexture(new ChTexture);
+				mtexture->SetTextureFilename("../objects/bluwhite.png");
+				mbody->AddAsset(mtexture);
+			}
+		};
+		MyCreatorFamily6* callback_family6 = new MyCreatorFamily6;
+
+		mcreator6->SetCallbackPostCreation(callback_family6);
+
+		ChSharedPtr<ChRandomShapeCreatorShavings> mcreator7(new ChRandomShapeCreatorShavings);
+		mcreator7->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.002, 0.004)) );
+		mcreator7->SetLengthRatioDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(3, 6)) );
+		mcreator7->SetTwistDistributionU( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.0, 200.0)) );
+		mcreator7->SetTwistDistributionV( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.0, 400)) );
+		mcreator7->SetSpheresSpacingFactor(0.5);
+
+
+		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
+		mcreatorTot->AddFamily(mcreator3, 0.0);
+		mcreatorTot->AddFamily(mcreator7, 1.0);
+		mcreatorTot->Setup();
+
+		emitter.SetParticleCreator(mcreatorTot);
+
+		ChSharedPtr<ChRandomParticleVelocityConstantDirection> mvelo(new ChRandomParticleVelocityConstantDirection);
+		mvelo->SetDirection(-VECT_Y);
+		mvelo->SetModulusDistribution(0.0);
+ 
+		emitter.SetParticleVelocity(mvelo);
 		
+
+
 
 
 		solidworks_py_modelfile = "../CAD_conveyor/conveyor_Ida"; // note! do not add ".py" after the filename
@@ -228,7 +275,7 @@ public:
 		surface_particles_rolling_friction =0;
 		surface_particles_spinning_friction =0;
 		surface_particles_restitution =0;
-
+/*
 		// fence constant
 		fence_width = 0.02;
 		fence_height=0.2;
@@ -245,6 +292,7 @@ public:
 		x_splitter3=0;
 		splitter_width=0.01;
 		splitter_height=0.4;
+*/
 		// hopper constant
 		znozzlesize = 0.182; //**from CAD, nozzle width
 		xnozzlesize = 0.1; //**from CAD, nozzle width
@@ -288,6 +336,8 @@ public:
 		// Set small collision envelopes for objects that will be created from now on..
 		ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
 		ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
+		// Set contact breaking/merging tolerance of Bullet:
+		ChCollisionSystemBullet::SetContactBreakingThreshold(0.001);
 	}
 
 
@@ -425,70 +475,16 @@ public:
 				ChCollisionModel::SetDefaultSuggestedMargin(document[token].GetDouble());
 			}
 			token = "CES_forces";
-			if (document.HasMember(token)) {
-				if (!document[token].IsObject()) {throw (ChException( "Invalid object after '"+std::string(token)+"'"));}
-				rapidjson::Value& mval = document[token];
-				token = "U";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->ces_forces.U = mval[token].GetDouble();
-				}
-				token = "L";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->ces_forces.L = mval[token].GetDouble();
-				}
-				token = "alpha_deg";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->ces_forces.alpha = (CH_C_PI/180)*mval[token].GetDouble();
-				}
-				token = "drum_diameter";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->ces_forces.drumdiameter = (CH_C_PI/180)*mval[token].GetDouble();
-				}
-				token = "drum_width";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->ces_forces.drum_width = (CH_C_PI/180)*mval[token].GetDouble();
-				}
-				token = "electrode_diameter";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->ces_forces.electrodediameter = (CH_C_PI/180)*mval[token].GetDouble();
-				}
+			if (document.HasMember(token)) 
+			{
+				// Parse the settings of the emitter, emitter positioner etc.
+				ParserElectricForcesCES::Parse(this->ces_forces, document[token]);
 			}
 			token = "emitter";
-			if (document.HasMember(token)) {
-				if (!document[token].IsObject()) {throw (ChException( "Invalid object after '"+std::string(token)+"'"));}
-				rapidjson::Value& mval = document[token];
-				token = "outlet_height";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletHeight() = mval[token].GetDouble();
-				}
-				token = "outlet_width";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletWidth() = mval[token].GetDouble();
-				}
-				token = "particles_per_second";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					this->emitter.ParticlesPerSecond() = mval[token].GetDouble();
-				}
-				token = "use_particle_reservoir";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
-					this->emitter.SetUseParticleReservoir( mval[token].GetBool() );
-				}
-				token = "particle_reservoir";
-				if (mval.HasMember(token)) {
-					if (!mval[token].IsInt()) {throw (ChException( "Invalid integer after '"+std::string(token)+"'"));}
-					this->emitter.ParticleReservoirAmount() = mval[token].GetInt();
-				}
-				
+			if (document.HasMember(token)) 
+			{
+				// Parse the settings of the emitter, emitter positioner etc.
+				ParserEmitter::Parse(this->emitter, this->emitter_positions, this->emitter_rotations, document[token]);
 			}
 		}
 		catch (ChException me)
@@ -1438,12 +1434,18 @@ public:
 		// For enabling Irrlicht visualization of assets (that have been added so far)
 		//
 
+
+			// What to do by default on all newly created particles? 
 		class MyCreatorForAll : public ChCallbackPostCreation
 		{
 			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
 			{
+				// Enable Irrlicht visualization for all particles
 				irrlicht_application->AssetBind(mbody);
 				irrlicht_application->AssetUpdate(mbody);
+
+				// Disable gyroscopic forces for increased integrator stabilty
+				mbody->SetNoGyroTorque(true);
 			}
 			irr::ChIrrApp* irrlicht_application;
 		};

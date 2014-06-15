@@ -41,8 +41,8 @@ public:
 		L = 0.267;					//certer distance of rotating roll electrode and electrostatic pole *****ida
 		alpha = (CH_C_PI/180)*30;	//angle of horizontal line and electrodes center line *****ida
 		epsilon  = 8.85941e-12;		//dielectric constant [F/m] *****ida 
-		epsilonO = 8.854187e-12;	//vacuum permeability
-		epsilonR = 2.5;				//relative permeability
+		epsilonO = 8.854187e-12;	//vacuum permettivity
+		epsilonR = 2.5;				//relative permettivity
 		eta = 0.0000181;			// Air drag coefficent [N*s/m^2]
 		ro=1.225;					// Air density (air) [Kg/m^3]
 	}
@@ -56,14 +56,7 @@ public:
 							double drumspeed,		 // speed of drum
 							int totframes)		
 	{
-		char padnumber[100];
-		char filename[200];
-		sprintf(padnumber, "%d", (totframes+10000));
-		sprintf(filename, "output\\forces%s.dat", padnumber+1);
-		//ChStreamOutAsciiFile data_forces(filename);
-		std::ofstream test;
-		test.open("output\\test.dat",std::ios::app); 
-		
+
 			// Compute parameters on-the-fly (some parameters like L or U might have changed meanwhile..)
 		h1 = (pow(L,2)+pow((drumdiameter/2),2)-((electrodediameter/2),2))/(2*L); //analytical parameter****ida
 		h2 = (pow(L,2)-pow((drumdiameter/2),2)+((electrodediameter/2),2))/(2*L);//analytical parameter****ida
