@@ -1289,9 +1289,9 @@ public:
 			pov_exporter.SetPictureFilebase("animPOV/picture");
 
 					// optional: modify the POV default light
-			pov_exporter.SetLight(ChVector<>(1.5f,4.4f,-1.0f), ChColor(0.1f,0.1f,0.1f), false);
+			pov_exporter.SetLight(ChVector<>(0.5f,0.75f,0.0f), ChColor(0.1f,0.1f,0.1f), true);
 
-			pov_exporter.SetCamera(ChVector<>(1.5f,0.8f,-1.0f),ChVector<>(0.5f,0.f,0.f),60,false);
+			pov_exporter.SetCamera(ChVector<>(0.5f,0.75f,0.5f),ChVector<>(0.2f,0.6f,0.f),30,false);
 
 					// optional: use SetCustomPOVcommandsScript() to add further POV commands,
 					// ex. create an additional light, and an additional grid, etc. 
@@ -1299,14 +1299,14 @@ public:
 			
 			pov_exporter.SetCustomPOVcommandsScript(" \
 				light_source {   \
-				  <2, 10, -3>  \
+				  <0.5, 0.8, 0>  \
 				  color rgb<1.8,1.8,1.8> \
-				  area_light <4, 0, 0>, <0, 0, 4>, 5, 5 \
+				  area_light <0.5, 0, 0>, <0, 0, 0.5>, 5, 5 \
 				  adaptive 1 \
 				  jitter\
 				} \
-				object{ Grid(0.5,0.01, rgb<0.9,0.9,0.9>, rgbt<1,1,1,1>) rotate <90, 0, 0>  } \
-				object{ Grid(0.1,0.04, rgb<1.5,1.5,1.5>, rgbt<1,1,1,1>) rotate <90, 0, 0> translate 0.001*z} \
+				//object{ Grid(0.5,0.01, rgb<0.9,0.9,0.9>, rgbt<1,1,1,1>) rotate <90, 0, 0>  } \
+				//object{ Grid(0.1,0.04, rgb<1.5,1.5,1.5>, rgbt<1,1,1,1>) rotate <90, 0, 0> translate 0.001*z} \
 			");
 
 					// IMPORTANT! Tell to the POVray exporter that 
