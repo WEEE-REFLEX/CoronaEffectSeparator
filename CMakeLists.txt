@@ -60,7 +60,7 @@ ADD_EXECUTABLE(conveyor     	source/conveyor_Ida.cpp
 #         The following is needed for some platforms
 
 SET_TARGET_PROPERTIES(conveyor PROPERTIES 
-	LINK_FLAGS "${CH_LINKERFLAG_EXE} /FORCE:MULTIPLE"   )
+	LINK_FLAGS "${CH_LINKERFLAG_EXE}"   )
 
 	
 #--------------------------------------------------------------
