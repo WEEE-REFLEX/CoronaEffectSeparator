@@ -153,101 +153,7 @@ public:
 		/// 
 	SimulatorCES()
 	{
-			// initialize member data:
-
-			// initialize the randomizer for positions
-		emitter_positions = ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
-		emitter_positions->OutletWidth() = 0.1;    // default x outlet size, from CAD;
-		emitter_positions->OutletHeight() = 0.182; // default y outlet size, from CAD;
-		emitter.SetParticlePositioner(emitter_positions);
-
-			// initialize the randomizer for alignments
-		emitter_rotations = ChSharedPtr<ChRandomParticleAlignmentUniform>(new ChRandomParticleAlignmentUniform);
-		emitter.SetParticleAligner(emitter_rotations);
-		
-			// initialize the randomizer for creations, with statistical distributions
-		
-		//***TEST***
-		
-		ChSharedPtr<ChRandomShapeCreatorBoxes> mcreator1(new ChRandomShapeCreatorBoxes);
-		mcreator1->SetXsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.004, 1.5)) );
-		mcreator1->SetYsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.004, 1.5)) );
-		mcreator1->SetZsizeDistribution( ChSmartPtr<ChWeibullDistribution>(new ChWeibullDistribution(0.004, 1.5)) );
-
-		ChSharedPtr<ChRandomShapeCreatorCylinders> mcreator3(new ChRandomShapeCreatorCylinders);
-		mcreator3->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.004, 0.004)) );
-		mcreator3->SetLenghtFactorDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(5, 5)) );
-
-		ChSharedPtr<ChRandomShapeCreatorConvexHulls> mcreator4(new ChRandomShapeCreatorConvexHulls);
-		mcreator4->SetChordDistribution( ChSmartPtr<ChZhangDistribution>(new ChZhangDistribution(0.01, 0.003)) );
-		mcreator4->SetSizeRatioYZDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(1.0, 0.3)) );
-		mcreator4->SetNpoints(14);
-
-		/*
-		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
-		mcreatorTot->AddFamily(mcreator2, 0.3);
-		mcreatorTot->AddFamily(mcreator3, 0.7);
-		mcreatorTot->Setup();
-		*/
-
-		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator2(new ChRandomShapeCreatorSpheres);
-		mcreator2->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.004, 0.004)) );
-
-		class MyCreatorFamily2 : public ChCallbackPostCreation
-		{
-			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
-			{
-				ChSharedPtr<ChTexture> mtexture(new ChTexture);
-				mtexture->SetTextureFilename("../objects/pinkwhite.png");
-				mbody->AddAsset(mtexture);
-			}
-		};
-		MyCreatorFamily2* callback_family2 = new MyCreatorFamily2;
-
-		mcreator2->SetCallbackPostCreation(callback_family2);
-
-
-
-		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator6(new ChRandomShapeCreatorSpheres);
-		mcreator6->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.004, 0.008)) );
-
-		class MyCreatorFamily6 : public ChCallbackPostCreation
-		{
-			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
-			{
-				ChSharedPtr<ChTexture> mtexture(new ChTexture);
-				mtexture->SetTextureFilename("../objects/bluwhite.png");
-				mbody->AddAsset(mtexture);
-			}
-		};
-		MyCreatorFamily6* callback_family6 = new MyCreatorFamily6;
-
-		mcreator6->SetCallbackPostCreation(callback_family6);
-
-		ChSharedPtr<ChRandomShapeCreatorShavings> mcreator7(new ChRandomShapeCreatorShavings);
-		mcreator7->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.002, 0.004)) );
-		mcreator7->SetLengthRatioDistribution( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(3, 6)) );
-		mcreator7->SetTwistDistributionU( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.0, 200.0)) );
-		mcreator7->SetTwistDistributionV( ChSmartPtr<ChMinMaxDistribution>(new ChMinMaxDistribution(0.0, 400)) );
-		mcreator7->SetSpheresSpacingFactor(0.5);
-
-
-		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
-		mcreatorTot->AddFamily(mcreator3, 0.0);
-		mcreatorTot->AddFamily(mcreator7, 1.0);
-		mcreatorTot->Setup();
-
-		emitter.SetParticleCreator(mcreatorTot);
-
-		ChSharedPtr<ChRandomParticleVelocityConstantDirection> mvelo(new ChRandomParticleVelocityConstantDirection);
-		mvelo->SetDirection(-VECT_Y);
-		mvelo->SetModulusDistribution(0.0);
- 
-		emitter.SetParticleVelocity(mvelo);
-		
-
-
-
+		// Initialize member data:
 
 		solidworks_py_modelfile = "../CAD_conveyor/conveyor_Ida"; // note! do not add ".py" after the filename
 
@@ -275,24 +181,7 @@ public:
 		surface_particles_rolling_friction =0;
 		surface_particles_spinning_friction =0;
 		surface_particles_restitution =0;
-/*
-		// fence constant
-		fence_width = 0.02;
-		fence_height=0.2;
-		// bin constant 
-		y_posbin=-0.815;
-		binbase=0.02; // base thickness of the bin
-		bin_length=1; // accorciato da 3 a 1, ida
-		bin_width=1.5;
-		bin_height=0.2;
-		n = 2; // number of bins (values from 2 to 4), a regime devo importare il cad dei 3 contenitori, ida
-		// splitter constant
-		x_splitter1=0;
-		x_splitter2=0;
-		x_splitter3=0;
-		splitter_width=0.01;
-		splitter_height=0.4;
-*/
+
 		// hopper constant
 		znozzlesize = 0.182; //**from CAD, nozzle width
 		xnozzlesize = 0.1; //**from CAD, nozzle width
@@ -306,7 +195,7 @@ public:
 		// SolidWorks model, they will be changed accordingly to what is found in the CAD 
 		// file (see later, where the SolidWorks model is parsed). 
 		/*
-		//***ALEX disabled because initialized by SolidWroks file, anyway
+		//***ALEX disabled because initialized by SolidWorks file, anyway
 		double conv_thick = 0.01; 
 		double conveyor_length = 0.6;
 		conveyor_csys	= ChCoordsys<>( ChVector<>(0, -conv_thick, 0) ) ; // default position
@@ -492,6 +381,7 @@ public:
 			GetLog()<< "ERROR loading settings file: \n   " << filename << "\n Reason: " << me.what() << "\n\n"; 
 		}
 
+		return true;
 	}
 
 
