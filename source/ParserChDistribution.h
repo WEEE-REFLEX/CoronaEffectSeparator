@@ -33,14 +33,12 @@ public:
 
 			if (mtype == std::string("ChConstantDistribution") )
 			{
-				GetLog() << "Parsing a ChConstantDistribution!\n";
-
 				double value=0;
 
 				token = "value";
 				if (mval.HasMember(token)) {
 					if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-					mval = mval[token].GetDouble();
+					value = mval[token].GetDouble();
 				}
 
 				// Create the distribution!
@@ -50,8 +48,6 @@ public:
 
 			if (mtype == std::string("ChMinMaxDistribution") )
 			{
-				GetLog() << "Parsing a ChMinMaxDistribution!\n";
-
 				double mmin=0;
 				double mmax=1;
 
@@ -73,8 +69,6 @@ public:
 
 			if (mtype == std::string("ChNormalDistribution") )
 			{
-				GetLog() << "Parsing a ChNormalDistribution!\n";
-
 				double variance=1;
 				double mean=0;
 
@@ -97,8 +91,6 @@ public:
 
 			if (mtype == std::string("ChWeibullDistribution") )
 			{
-				GetLog() << "Parsing a ChWeibullDistribution!\n";
-
 				double lambda=1;
 				double k=1;
 
@@ -121,8 +113,6 @@ public:
 
 			if (mtype == std::string("ChZhangDistribution") )
 			{
-				GetLog() << "Parsing a ChZhangDistribution!\n";
-
 				double average=1;
 				double mmin=1;
 
@@ -231,7 +221,7 @@ public:
 
 		}
 		if (createddistr.IsNull()) {throw (ChException( "Cannot create the specified distribution (unknown 'type': ...? )"));}
-GetLog() <<"Done creating distr.\n";
+
 		return createddistr;
 	}
 	

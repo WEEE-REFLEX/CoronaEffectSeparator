@@ -18,12 +18,13 @@ public:
 	
 		/// Just a simple static function here, call as ParserEmitter::Parse(...)
 	static void Parse (ChParticleEmitter& emitter, 
+					   ChSystem& msystem,
 					   ChSharedPtr<ChRandomParticlePositionRectangleOutlet> emitter_positions,
 					   ChSharedPtr<ChRandomParticleAlignment> emitter_rotations,
 					   rapidjson::Value& mval)
 	{
 		char* token;
-		if (!mval.IsObject()) {throw (ChException( "Invalid object after '"+std::string(token)+"'"));}
+		if (!mval.IsObject()) {throw (ChException( "Invalid particle emitter object"));}
 
 		token = "outlet_height";
 		if (mval.HasMember(token)) {
@@ -54,7 +55,7 @@ public:
 		if (mval.HasMember(token)) 
 		{
 			// Parse the random creator of the emitter
-			emitter.SetParticleCreator( ParserChRandomShapeGenerator::ParseCreate(mval[token]) );
+			emitter.SetParticleCreator( ParserChRandomShapeGenerator::ParseCreate(mval[token], msystem ) );
 		}
 	}
 	
