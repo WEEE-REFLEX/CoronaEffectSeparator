@@ -33,7 +33,8 @@
 namespace particlefactory
 {
 
-
+// Forward reference
+class ChRandomShapeCreator;
 
 	/// Inherit from this class and pass an object to the PostCreation() 
 	/// functions of particle creator, to have the callback executed 
@@ -43,7 +44,7 @@ class ChCallbackPostCreation
 {
 public:
 		/// Implement this function if you want to provide the post creation callback.
-	virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords) = 0;
+	virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator) = 0;
 };
 
 
@@ -71,7 +72,7 @@ public:
 			ChSharedPtr<ChBody> mbody = this->RandomGenerate(mcoords);
 
 			if (callback_post_creation)
-				callback_post_creation->PostCreation( mbody, mcoords);
+				callback_post_creation->PostCreation( mbody, mcoords, *this);
 			return mbody;
 		}
 			/// Set the callback function to execute at each 
@@ -143,10 +144,10 @@ public:
 	ChRandomShapeCreatorBoxes() 
 	{
 		// defaults
-		x_size  = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.01));
+		x_size      = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(0.01));
 		sizeratioYZ = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1.0));
 		sizeratioZ  = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1.0));
-		density = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
+		density     = ChSmartPtr<ChConstantDistribution>(new ChConstantDistribution(1000));
 	}
 
 			/// Function that creates a random ChBody particle each
@@ -292,7 +293,7 @@ public:
 	void SetChordDistribution(ChSmartPtr<ChDistribution> mdistr) {chord = mdistr;}
 			/// Set the statistical distribution for scaling on both Y,Z widths (the lower <1, the thinner, as a needle).
 	void SetSizeRatioYZDistribution(ChSmartPtr<ChDistribution> mdistr) {sizeratioYZ = mdistr;}
-			/// Set the statistical distribution for scaling on both Z width (the lower <1, the flatter, as a chip).
+			/// Set the statistical distribution for scaling on Z width (the lower <1, the flatter, as a chip).
 	void SetSizeRatioZDistribution(ChSmartPtr<ChDistribution> mdistr) {sizeratioZ = mdistr;}
 
 			/// Set the statistical distribution for the random density.
@@ -371,7 +372,7 @@ public:
 							this->add_collision_shape, 
 							this->add_visualization_asset));
 
-		GetLog() << "Diameter:" << mdiameter << " length:" << mlength << " mass:" << mbody->GetMass() << "\n  inertiaXX" << mbody->GetInertiaXX() << "\n inertiaXY:" <<  mbody->GetInertiaXY() << "\n";
+		//GetLog() << "Diameter:" << mdiameter << " length:" << mlength << " mass:" << mbody->GetMass() << "\n  inertiaXX" << mbody->GetInertiaXX() << "\n inertiaXY:" <<  mbody->GetInertiaXY() << "\n";
 
 		mbody->SetCoord(mcoords);
 		return mbody;
@@ -730,7 +731,7 @@ public:
 				mbody->SetWvel_par(particle_angular_velocity->RandomVelocity());
 
 				if (this->creation_callback)
-					this->creation_callback->PostCreation(mbody, mcoords);
+					this->creation_callback->PostCreation(mbody, mcoords, *particle_creator.get_ptr());
 
 				msystem.Add(mbody);
 
