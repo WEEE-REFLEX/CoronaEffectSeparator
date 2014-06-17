@@ -62,6 +62,9 @@ public:
 			// DATA of the simulator
 			//
 
+	// The ChronoENGINE physical system
+	ChSystem mphysicalSystem;
+
 	ElectricForcesCES ces_forces; // this contains data for computing the CES electric forces
 
 	ChParticleEmitter emitter;
@@ -1037,8 +1040,6 @@ public:
 		///
 	int simulate()
 	{
-		// Create a ChronoENGINE physical system
-		ChSystem mphysicalSystem;
 
 		// From now on, functions in ChParticlesSceneNodeTools will find 3d .obj models 
 		// in "../objects/", instead of default "../data/" dir:
