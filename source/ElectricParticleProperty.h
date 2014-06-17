@@ -20,14 +20,18 @@ public:
 	ChVector<> ElectricForce;
 	ChVector<> StokesForce;
 	ChVector<> ElectricImageForce;
-	enum 
+
+	enum enum_fraction_type
 	{
 		e_fraction_box,
 		e_fraction_cylinder,
 		e_fraction_sphere,
+		e_fraction_convexhull,
+		e_fraction_shaving,
 		e_fraction_others
 	} fraction;
-	enum 
+
+	enum enum_material_type
 	{
 		e_mat_plastic,
 		e_mat_metal,
