@@ -230,12 +230,130 @@ public:
 		ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
 		// Set contact breaking/merging tolerance of Bullet:
 		ChCollisionSystemBullet::SetContactBreakingThreshold(0.001);
+
+
+		// In the following there is a default initialization of the 
+		// particle creation system, based on ChParticleEmitter. 
+		// This is a default configuration, that is _overridden_ if you 
+		// call ParseSettings() and load a settings.ces file that contain different
+		// configurations for the emitter.
+
+		// ---Initialize the randomizer for positions
+		emitter_positions = ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
+		emitter_positions->OutletWidth() = 0.1;    // default x outlet size, from CAD;
+		emitter_positions->OutletHeight() = 0.182; // default y outlet size, from CAD;
+		emitter.SetParticlePositioner(emitter_positions);
+
+		// ---Initialize the randomizer for alignments
+		emitter_rotations = ChSharedPtr<ChRandomParticleAlignmentUniform>(new ChRandomParticleAlignmentUniform);
+		emitter.SetParticleAligner(emitter_rotations);
+		
+		// ---Initialize the randomizer for creations, with statistical distribution
+
+		 // Create a ChRandomShapeCreator object (ex. here for metal particles)
+		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator_metal(new ChRandomShapeCreatorSpheres);
+		mcreator_metal->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.002, 0.003)) );
+
+		 // Optional: define a callback to be exectuted at each creation of a metal particle:
+		class MyCreator_metal : public ChCallbackPostCreation
+		{
+			// Here do custom stuff on the just-created particle:
+			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+			{
+				  // Attach some optional visualization stuff
+				//ChSharedPtr<ChTexture> mtexture(new ChTexture);
+				//mtexture->SetTextureFilename("../objects/pinkwhite.png");
+				//mbody->AddAsset(mtexture);
+				ChSharedPtr<ChVisualization> mvisual(new ChVisualization);
+				mvisual->SetColor(ChColor(0.9f,0.4f,0.2f));
+				mbody->AddAsset(mvisual);
+				  // Attach a custom asset. It will hold electrical properties
+				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
+				electric_asset->fraction	  = ElectricParticleProperty::e_fraction_sphere;
+				electric_asset->material_type = ElectricParticleProperty::e_mat_metal;
+				electric_asset->conductivity  = 6428000;
+				electric_asset->birthdate	  = this->systemreference->GetChTime();
+				ChVector<> Cradii; // use equivalent-inertia ellipsoid to get characteristic size:
+				ChVector<> Ine = mbody->GetInertiaXX();
+				Cradii.x = sqrt((5./(2.*mbody->GetMass()))*(Ine.y+Ine.z-Ine.x));
+				Cradii.y = sqrt((5./(2.*mbody->GetMass()))*(Ine.x+Ine.z-Ine.y));
+				Cradii.z = sqrt((5./(2.*mbody->GetMass()))*(Ine.x+Ine.y-Ine.z));
+				electric_asset->Cdim         = Cradii*2.;
+				mbody->AddAsset(electric_asset);
+			}
+			// here put custom data that might be needed by the callback:
+			ChSystem* systemreference;
+		};
+		MyCreator_metal* callback_metal = new MyCreator_metal;
+		callback_metal->systemreference = &this->mphysicalSystem;
+		mcreator_metal->SetCallbackPostCreation(callback_metal);
+
+
+		 // Create a ChRandomShapeCreator object (ex. here for metal particles)
+		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator_plastic(new ChRandomShapeCreatorSpheres);
+		mcreator_plastic->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.002, 0.002)) );
+
+		 // Optional: define a callback to be exectuted at each creation of a plastic particle:
+		class MyCreator_plastic : public ChCallbackPostCreation
+		{
+			// Here do custom stuff on the just-created particle:
+			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+			{
+				  // Attach some optional visualization stuff
+				//ChSharedPtr<ChTexture> mtexture(new ChTexture);
+				//mtexture->SetTextureFilename("../objects/bluwhite.png");
+				//mbody->AddAsset(mtexture);
+				ChSharedPtr<ChVisualization> mvisual(new ChVisualization);
+				mvisual->SetColor(ChColor(0.3f,0.6f,0.7f));
+				mbody->AddAsset(mvisual);
+				  // Attach a custom asset. It will hold electrical properties
+				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
+				electric_asset->fraction	  = ElectricParticleProperty::e_fraction_sphere; 
+				electric_asset->material_type = ElectricParticleProperty::e_mat_plastic;
+				electric_asset->conductivity  = 0;
+				electric_asset->birthdate	  = this->systemreference->GetChTime();
+				ChVector<> Cradii;  // use equivalent-inertia ellipsoid to get characteristic size:
+				ChVector<> Ine = mbody->GetInertiaXX();
+				Cradii.x = sqrt((5./(2.*mbody->GetMass()))*(Ine.y+Ine.z-Ine.x));
+				Cradii.y = sqrt((5./(2.*mbody->GetMass()))*(Ine.x+Ine.z-Ine.y));
+				Cradii.z = sqrt((5./(2.*mbody->GetMass()))*(Ine.x+Ine.y-Ine.z));
+				electric_asset->Cdim         = Cradii*2.; 
+				mbody->AddAsset(electric_asset);
+			}
+			// here put custom data of the callback
+			ChSystem* systemreference;
+		};
+		MyCreator_plastic* callback_plastic = new MyCreator_plastic;
+		callback_plastic->systemreference = &this->mphysicalSystem;
+		mcreator_plastic->SetCallbackPostCreation(callback_plastic);
+
+
+		 // Create a parent ChRandomShapeCreator that 'mixes' the two generators above,
+		 // mixing them with a given percentual:
+		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
+		mcreatorTot->AddFamily(mcreator_metal,   0.4);	// 1st creator family, with percentual
+		mcreatorTot->AddFamily(mcreator_plastic, 0.4);	// 2nd creator family, with percentual
+		mcreatorTot->Setup();
+
+		 // Finally, tell to the emitter that it must use the 'mixer' above:
+		emitter.SetParticleCreator(mcreatorTot);
+
+
+		// ---Initialize the randomizer for velocities, with statistical distribution
+
+		ChSharedPtr<ChRandomParticleVelocityConstantDirection> mvelo(new ChRandomParticleVelocityConstantDirection);
+		mvelo->SetDirection(-VECT_Y);
+		mvelo->SetModulusDistribution(0.0);
+ 
+		emitter.SetParticleVelocity(mvelo);
 	}
 
 
+
 			///
-			///Parser
+			/// Parser
 			/// - load settings from a .ces input file, with simulator settings in JSON format
+
 	bool ParseSettings(const char* filename)
 	{
 		try 
@@ -376,7 +494,7 @@ public:
 			if (document.HasMember(token)) 
 			{
 				// Parse the settings of the emitter, emitter positioner etc.
-				ParserEmitter::Parse(this->emitter, this->emitter_positions, this->emitter_rotations, document[token]);
+				ParserEmitter::Parse(this->emitter, this->mphysicalSystem, this->emitter_positions, this->emitter_rotations, document[token]);
 			}
 		}
 		catch (ChException me)
@@ -1325,30 +1443,41 @@ public:
 		// For enabling Irrlicht visualization of assets (that have been added so far)
 		//
 
-
-			// What to do by default on all newly created particles? 
-		class MyCreatorForAll : public ChCallbackPostCreation
-		{
-			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords)
-			{
-				// Enable Irrlicht visualization for all particles
-				irrlicht_application->AssetBind(mbody);
-				irrlicht_application->AssetUpdate(mbody);
-
-				// Disable gyroscopic forces for increased integrator stabilty
-				mbody->SetNoGyroTorque(true);
-			}
-			irr::ChIrrApp* irrlicht_application;
-		};
-		MyCreatorForAll* mcreation_callback = new MyCreatorForAll;
-		mcreation_callback->irrlicht_application = &application;
-		emitter.SetCallbackPostCreation(mcreation_callback);
-
-
 		application.AssetBindAll();
 		application.AssetUpdateAll();
 		if (irr_cast_shadows)
 			application.AddShadowAll();
+
+
+			// What to do by default on ALL newly created particles? 
+		class MyCreatorForAll : public ChCallbackPostCreation
+		{
+			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+			{
+				// Enable Irrlicht visualization for all particles
+				airrlicht_application->AssetBind(mbody);
+				airrlicht_application->AssetUpdate(mbody);
+
+				// Enable POV visualization
+				if (apov_exporter)
+					apov_exporter->Add(mbody);
+
+				// Disable gyroscopic forces for increased integrator stabilty
+				mbody->SetNoGyroTorque(true);
+			}
+			irr::ChIrrApp* airrlicht_application;
+			ChPovRay* apov_exporter;
+		};
+		MyCreatorForAll* mcreation_callback = new MyCreatorForAll;
+		mcreation_callback->airrlicht_application = &application;
+		if (this->save_POV_screenshots) 
+			mcreation_callback->apov_exporter = &pov_exporter;
+		else
+			mcreation_callback->apov_exporter = 0;
+		emitter.SetCallbackPostCreation(mcreation_callback);
+
+
+
 
 
 		// 
