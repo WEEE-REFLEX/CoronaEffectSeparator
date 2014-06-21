@@ -24,7 +24,7 @@ UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp,
 	scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
 					true, rect<s32>(560, 15, 700, 15+20), 0, 101);
 	scrollbar_flow->setMax(100);
-	scrollbar_flow->setPos(((int)((mysimulator->STATIC_flow/1000.0 )*25)));
+	scrollbar_flow->setPos(((int)((mysimulator->emitter.ParticlesPerSecond()/1000.0 )*25)));
 	text_flow = application->GetIGUIEnvironment()->addStaticText(
 				L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
 
@@ -61,8 +61,8 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 				if (id == 101) // id of 'flow' slider..
 				{
 					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-					simulator->STATIC_flow = 1000* ((double)pos/25);
-					char message[50]; sprintf(message,"Flow %d [particl/s]", (int)simulator->STATIC_flow);
+					simulator->emitter.ParticlesPerSecond() = 1000* ((double)pos/25);
+					char message[50]; sprintf(message,"Flow %d [particl/s]", (int)simulator->emitter.ParticlesPerSecond());
 					text_flow->setText(core::stringw(message).c_str());
 				}
 				if (id == 102) // id of 'speed' slider..

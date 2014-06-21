@@ -39,17 +39,17 @@ public:
 		token = "drum_diameter";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-			ces_forces.drumdiameter = (CH_C_PI/180)*mval[token].GetDouble();
+			ces_forces.drumdiameter = mval[token].GetDouble();
 		}
 		token = "drum_width";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-			ces_forces.drum_width = (CH_C_PI/180)*mval[token].GetDouble();
+			ces_forces.drum_width = mval[token].GetDouble();
 		}
 		token = "electrode_diameter";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-			ces_forces.electrodediameter = (CH_C_PI/180)*mval[token].GetDouble();
+			ces_forces.electrodediameter = mval[token].GetDouble();
 		}
 	}
 	

@@ -263,7 +263,6 @@ public:
 							  // Attach a custom asset. It will hold electrical properties
 							ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
 							
-							electric_asset->fraction	  = ElectricParticleProperty::e_fraction_sphere;
 							electric_asset->material_type = this->def_mattype;
 							electric_asset->conductivity  = this->def_conductivity;
 							electric_asset->birthdate	  = this->systemreference->GetChTime();
