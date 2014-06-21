@@ -56,7 +56,6 @@ public:
 							double drumspeed,		 // speed of drum
 							int totframes)		
 	{
-
 			// Compute parameters on-the-fly (some parameters like L or U might have changed meanwhile..)
 		h1 = (pow(L,2)+pow((drumdiameter/2),2)-((electrodediameter/2),2))/(2*L); //analytical parameter****ida
 		h2 = (pow(L,2)-pow((drumdiameter/2),2)+((electrodediameter/2),2))/(2*L);//analytical parameter****ida
@@ -81,7 +80,7 @@ public:
 				{
 					// OK! THIS WAS A PARTICLE! ***ALEX
 					was_a_particle = true;		
-					electricproperties = myasset;
+					electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 				} 
 			}
 
@@ -89,7 +88,6 @@ public:
 			// the 'ElectricParticleProperty' attached.. **ALEX
 			if(was_a_particle)
 			{
-
 				ChVector<> diam = electricproperties->Cdim; 
 				double sigma =    electricproperties->conductivity;
 
@@ -174,7 +172,7 @@ public:
 					ChVector<> ElectricForce = electricproperties->ElectricForce;
 
 					electricproperties->ElectricForce = 0.832 * electricproperties->chargeM * vE;
-
+//GetLog() << "ElectricForce" << ElectricForce << "\n";
 					// switch off electric forces if too out-of-plane
 					if ((mrelpos.z > drum_width*0.5) || (mrelpos.z < -drum_width*0.5))
 						ElectricForce = 0; 
@@ -209,7 +207,7 @@ public:
 					{
 						electricproperties->chargeP = 0; // charge
 					}
-
+					
 					ChVector<> ElectricImageForce = electricproperties->ElectricImageForce;
 
 

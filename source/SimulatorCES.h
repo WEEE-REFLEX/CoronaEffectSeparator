@@ -71,17 +71,14 @@ public:
 	ChSharedPtr<ChRandomParticlePositionRectangleOutlet> emitter_positions;
 	ChSharedPtr<ChRandomParticleAlignment> emitter_rotations;
 
-	double STATIC_flow;
-
 	double drumspeed_rpm; // [rpm]
 	double drumspeed_radss; //[rad/s]
 	
+	/* old, unused
 	double sphrad;
 	double sphrad2;
 	double sphrad3;
-	double particles_dt;
-	double debris_number;
-	double max_numb_particles;
+	*/
 
 	// material surfaces
 	float surface_drum_friction;
@@ -92,35 +89,13 @@ public:
 	float surface_plate_rolling_friction;
 	float surface_plate_spinning_friction;
 	float surface_plate_restitution;
-	float surface_particles_friction;
-	float surface_particles_rolling_friction;
-	float surface_particles_spinning_friction;
-	float surface_particles_restitution;
+	ChSharedPtr<ChMaterialSurface> surface_particles;
 
+	double max_particle_age;
 
-	// fence constant
-	double fence_width;
-	double fence_height;
-	// bin constant 
-	double y_posbin;
-	double binbase; // base thickness of the bin
-	double bin_length; // accorciato da 3 a 1, ida
-	double bin_width;
-	double bin_height;
-	double n; // number of bins (values from 2 to 4), a regime devo importare il cad dei 3 contenitori, ida
-	// splitter constant
-	double x_splitter1;
-	double x_splitter2;
-	double x_splitter3;
-	double splitter_width;
-	double splitter_height;
-	
 	double xnozzlesize; 
 	double znozzlesize; 
 	
-	double densityMetal; // sn-pb //8900;//rame//1820 vecchia densità;
-	double densityPlastic;// polipropilene //900 vecchia densità;
-	int myid;
 
 	// Coordinate systems with position and rotation of important items in the 
 	// simulator. These are initializad with constant values, but if loading the
@@ -160,17 +135,12 @@ public:
 
 		solidworks_py_modelfile = "../CAD_conveyor/conveyor_Ida"; // note! do not add ".py" after the filename
 
-		STATIC_flow =0; //1000;
-
 		drumspeed_rpm = 44.8;
 		drumspeed_radss = drumspeed_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
 
-		sphrad = 0.38e-3;
-		sphrad2 = 0.25e-3;
-		sphrad3 = 0.794e-3;
-		particles_dt;
-		debris_number = 0;
-		max_numb_particles = 100;
+		//sphrad = 0.38e-3;
+		//sphrad2 = 0.25e-3;
+		//sphrad3 = 0.794e-3;
 
 		surface_drum_friction =0.5f;
 		surface_drum_rolling_friction =0;
@@ -180,18 +150,19 @@ public:
 		surface_plate_rolling_friction =0;
 		surface_plate_spinning_friction =0;
 		surface_plate_restitution =0;
-		surface_particles_friction =0.2f;
-		surface_particles_rolling_friction =0;
-		surface_particles_spinning_friction =0;
-		surface_particles_restitution =0;
+	
+		surface_particles = ChSharedPtr<ChMaterialSurface>(new ChMaterialSurface);
+		surface_particles->SetFriction(0.2f);
+		surface_particles->SetRollingFriction(0);
+		surface_particles->SetSpinningFriction(0);
+		surface_particles->SetRestitution(0);
 
-		// hopper constant
-		znozzlesize = 0.182; //**from CAD, nozzle width
-		xnozzlesize = 0.1; //**from CAD, nozzle width
+		max_particle_age = 2;
 
-		densityMetal =  8400; // sn-pb //8900;//rame//1820 vecchia densità;
-		densityPlastic = 946;// polipropilene //900 vecchia densità;
-		myid = 1;
+		// nozzle sizes
+		znozzlesize = 0.182; //**from CAD, nozzle z width
+		xnozzlesize = 0.1; //**from CAD, nozzle x width
+
 
 		// Init coordinate systems with position and rotation of important items in the 
 		// simulator. These are initializad with constant values, but if loading the
@@ -230,6 +201,10 @@ public:
 		ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
 		// Set contact breaking/merging tolerance of Bullet:
 		ChCollisionSystemBullet::SetContactBreakingThreshold(0.001);
+
+		// Important! dt is small, and particles are small, so it's better to keep this small...
+		mphysicalSystem.SetMaxPenetrationRecoverySpeed(0.15);// not needed in INT_TASORA, only for INT_ANITESCU
+		mphysicalSystem.SetMinBounceSpeed(0.1);
 
 
 		// In the following there is a default initialization of the 
@@ -457,22 +432,31 @@ public:
 			token = "surface_particles_friction";
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-				this->surface_particles_friction = (float)document[token].GetDouble();
+				//this->surface_particles_friction = (float)document[token].GetDouble();
+				this->surface_particles->SetFriction( (float)document[token].GetDouble() );
 			}
 			token = "surface_particles_rolling_friction";
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-				this->surface_particles_rolling_friction = (float)document[token].GetDouble();
+				//this->surface_particles_rolling_friction = (float)document[token].GetDouble();
+				this->surface_particles->SetRollingFriction( (float)document[token].GetDouble() );
 			}
 			token = "surface_particles_spinning_friction";
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-				this->surface_particles_spinning_friction = (float)document[token].GetDouble();
+				//this->surface_particles_spinning_friction = (float)document[token].GetDouble();
+				this->surface_particles->SetSpinningFriction( (float)document[token].GetDouble() );
 			}
 			token = "surface_particles_restitution";
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-				this->surface_particles_restitution = (float)document[token].GetDouble();
+				//this->surface_particles_restitution = (float)document[token].GetDouble();
+				this->surface_particles->SetRestitution( (float)document[token].GetDouble() );
+			}
+			token = "max_particle_age";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->max_particle_age =  (float)document[token].GetDouble();
 			}
 			token = "default_collision_envelope";
 			if (document.HasMember(token)) {
@@ -483,6 +467,21 @@ public:
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
 				ChCollisionModel::SetDefaultSuggestedMargin(document[token].GetDouble());
+			}
+			token = "default_contact_breaking";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				ChCollisionSystemBullet::SetContactBreakingThreshold(document[token].GetDouble());
+			}
+			token = "max_penetration_recovery_speed";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				mphysicalSystem.SetMaxPenetrationRecoverySpeed( document[token].GetDouble() );
+			}
+			token = "min_bounce_speed";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				mphysicalSystem.SetMinBounceSpeed( document[token].GetDouble() );
 			}
 			token = "CES_forces";
 			if (document.HasMember(token)) 
@@ -500,6 +499,7 @@ public:
 		catch (ChException me)
 		{
 			GetLog()<< "ERROR loading settings file: \n   " << filename << "\n Reason: " << me.what() << "\n\n"; 
+			throw(ChException("Error in parsing."));
 		}
 
 		return true;
@@ -526,451 +526,7 @@ public:
 
 
 
-
-		/// Shortcut for easy creation of a body that has both a box visualization and a box collision,
-		/// with default values for mass inertia etc. 
-		///
-
-	ChSharedPtr<ChBody> create_box_collision_shape(ChVector<> pos, //  center of box
-												   ChVector<> size, // size along box x y z
-												   ChQuaternion<> rot = QUNIT) // optional rotation
-	{
-		// Create a body
-		ChSharedPtr<ChBody> mrigidBody(new ChBody);
-
-		mrigidBody->SetPos(pos);
-				
-		// Define a collision shape 
-		mrigidBody->GetCollisionModel()->ClearModel();
-		mrigidBody->GetCollisionModel()->AddBox(0.5*size.x, 0.5*size.y, 0.5*size.z);
-		mrigidBody->GetCollisionModel()->BuildModel();
-		mrigidBody->SetCollide(true);
-
-		// Attach a visualization shape asset. 
-		ChSharedPtr<ChBoxShape> mbox(new ChBoxShape);
-		mbox->GetBoxGeometry().SetLenghts(size);
-		mrigidBody->AddAsset(mbox);
-
-		return mrigidBody;
-	}
-
-
-		///
-		/// Function that creates debris that fall on 
-		/// the conveyor belt, to be called at each dt
-		///
-	void create_debris(double dt, double particles_second, 
-					   ChCoordsys<> mnozzle_csys,
-					   ChSystem& mysystem, 
-					   ChIrrApp* irr_application,
-					   ChPovRay* mpov_exporter)
-	{
-
-		double sph_fraction = 0.33;
-		double sph2_fraction = 0;
-		double sph3_fraction = 0.67;
-		double box_fraction = 0;
-		double cyl_fraction = 1-box_fraction-(sph_fraction + sph2_fraction + sph3_fraction);
-
-		//double sphrad = 0.6e-3 + (ChRandom()-0.5)*(0.6e-3); vecchia distribuzione
-		//double sphrad = 0.5e-3; messa come variabile globale per esportazione e postprocessing
-		double cylhei = 0.035;
-		double cylrad = sphrad;
-		double cylmass = CH_C_PI*pow(cylrad,2)*cylhei* 1.0;  // now with default 1.0 density
-		double sphmass = (4./3.)*CH_C_PI*pow(sphrad,3)* 1.0; // now with default 1.0 density
-		double sphmass2 = (4./3.)*CH_C_PI*pow(sphrad2,3)* 1.0; // now with default 1.0 density
-		double sphmass3 = (4./3.)*CH_C_PI*pow(sphrad3,3)* 1.0; // now with default 1.0 density
-		double sphinertia = 0.4*pow(sphrad,2)*sphmass;      // now with default 1.0 density
-		double sphinertia2 = 0.4*pow(sphrad2,2)*sphmass2;      // now with default 1.0 density
-		double sphinertia3 = 0.4*pow(sphrad3,2)*sphmass3;      // now with default 1.0 density
-		double cylinertia = 0.0833*(pow(cylhei,2)+3*pow(sphrad,2))*cylmass;//0.0833*(pow(cylhei,2)+3*pow(sphrad,2))*cylmass;  // now with default 1.0 density
-		double cylinertia2 = 0.5*pow(sphrad,2)*cylmass; //0.5*pow(sphrad,2)*cylmass; // now with default 1.0 density
-		
-
-		double exact_particles_dt = dt * particles_second;
-		//double particles_dt= floor(exact_particles_dt);
-		particles_dt= floor(exact_particles_dt);
-		double remaind = exact_particles_dt - particles_dt;
-
-	    
-		if (remaind > ChRandom()) particles_dt +=1;
-
-	    
-		for (int i = 0; i < particles_dt; i++)
-		{
-			ChSharedPtr<ChBody> created_body;
-			ChSharedPtr<ElectricParticleProperty> created_electrical_asset;
-
-			double rand_shape_fract = ChRandom();
-
-			double max_angvel = 12;
-			ChVector<> rand_position = mnozzle_csys.TrasformLocalToParent( ChVector<>(-0.5*xnozzlesize+ChRandom()*xnozzlesize, 0, -0.5*znozzlesize+ChRandom()*znozzlesize) ) ;
-			ChVector<> rand_velocity =(0.4 + (ChRandom()-0.5)*(0.4), 0,0);
-			ChVector<> rand_angvel =((ChRandom()-0.5)*2*(max_angvel), 
-									 (ChRandom()-0.5)*2*(max_angvel),
-									 (ChRandom()-0.5)*2*(max_angvel));
-			//
-			// 1 ---- Create particle 
-			// 
-
-			if (rand_shape_fract < sph_fraction)
-			{
-				// Create a body
-				ChSharedPtr<ChBody> mrigidBody(new ChBody);
-
-				mrigidBody->SetPos(rand_position);
-				mrigidBody->SetPos_dt(rand_velocity);
-				mrigidBody->SetWvel_par(rand_angvel);
-				mrigidBody->SetMass(sphmass);
-				mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
-				mrigidBody->SetFriction(surface_particles_friction);
-				mrigidBody->SetImpactC(surface_particles_restitution);
-				mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
-				
-				       
-				mrigidBody->SetRollingFriction(surface_particles_rolling_friction);
-				mrigidBody->SetSpinningFriction(surface_particles_spinning_friction);
-
-
-				// Define a collision shape 
-				mrigidBody->GetCollisionModel()->ClearModel();
-				mrigidBody->GetCollisionModel()->AddSphere(sphrad);
-				//mrigidBody->GetCollisionModel()->AddSphere(sphrad, &ChVector<>(0.005,0,0)); // etc. optional
-				mrigidBody->GetCollisionModel()->BuildModel();
-				mrigidBody->SetCollide(true);
-
-				// Attach a visualization shape asset. 
-				ChSharedPtr<ChSphereShape> msphere(new ChSphereShape);
-				msphere->GetSphereGeometry().rad = sphrad * particle_magnification; 
-				msphere->GetSphereGeometry().center = ChVector<>(0,0,0);
-				mrigidBody->AddAsset(msphere);
-				/* etc. optional
-				ChSharedPtr<ChSphereShape> msphere2(new ChSphereShape);
-				msphere2->GetSphereGeometry().rad = sphrad*5; // test****
-				msphere2->GetSphereGeometry().center = ChVector<>(0.005,0,0);
-				mrigidBody->AddAsset(msphere2);
-				*/
-
-				// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
-				electric_asset->Cdim         = ChVector<>(2*sphrad,2*sphrad,2*sphrad);
-				electric_asset->fraction	 = ElectricParticleProperty::e_fraction_sphere;
-				electric_asset->birthdate	 = mysystem.GetChTime();
-				mrigidBody->AddAsset(electric_asset);
-				
-				// Finally, do not forget to add the body to the system:
-				mysystem.Add(mrigidBody);
-
-				created_body = mrigidBody;
-				created_electrical_asset = electric_asset; // for reference later
-			}//**********************************************************************************************************************
-			if ((rand_shape_fract > sph_fraction) && (rand_shape_fract < sph_fraction + sph2_fraction))
-			{
-				// Create a body
-				ChSharedPtr<ChBody> mrigidBody(new ChBody);
-
-				mrigidBody->SetPos(rand_position);
-				mrigidBody->SetPos_dt(rand_velocity);
-				mrigidBody->SetWvel_par(rand_angvel);
-				mrigidBody->SetMass(sphmass2);
-				mrigidBody->SetInertiaXX(ChVector<>(sphinertia2,sphinertia2,sphinertia2));
-				mrigidBody->SetFriction(surface_particles_friction);
-				mrigidBody->SetImpactC(surface_particles_restitution); 
-				mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
-				      
-				// Define a collision shape 
-				mrigidBody->GetCollisionModel()->ClearModel();
-				mrigidBody->GetCollisionModel()->AddSphere(sphrad2);
-				mrigidBody->GetCollisionModel()->BuildModel();
-				mrigidBody->SetCollide(true);
-
-				// Attach a visualization shape asset. 
-				ChSharedPtr<ChSphereShape> msphere(new ChSphereShape);
-				msphere->GetSphereGeometry().rad = sphrad2 * particle_magnification; 
-				msphere->GetSphereGeometry().center = ChVector<>(0,0,0);
-				mrigidBody->AddAsset(msphere);
-		
-				// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
-				electric_asset->Cdim         = ChVector<>(2*sphrad2,2*sphrad2,2*sphrad2);
-				electric_asset->fraction	 = ElectricParticleProperty::e_fraction_sphere;
-				electric_asset->birthdate	 = mysystem.GetChTime();
-				mrigidBody->AddAsset(electric_asset);
-				
-				// Finally, do not forget to add the body to the system:
-				mysystem.Add(mrigidBody);
-
-				created_body = mrigidBody;
-				created_electrical_asset = electric_asset; // for reference later
-
-			}
-		   if (((rand_shape_fract > sph_fraction + sph2_fraction)) && 
-			   (rand_shape_fract < (sph_fraction + sph2_fraction + sph3_fraction)))
-			{
-				// Create a body
-				ChSharedPtr<ChBody> mrigidBody(new ChBody);
-
-				mrigidBody->SetPos(rand_position);
-				mrigidBody->SetPos_dt(rand_velocity);
-				mrigidBody->SetWvel_par(rand_angvel);
-				mrigidBody->SetMass(sphmass3);
-				mrigidBody->SetInertiaXX(ChVector<>(sphinertia3,sphinertia3,sphinertia3));
-				mrigidBody->SetFriction(surface_particles_friction);
-				mrigidBody->SetImpactC(surface_particles_restitution); 
-				mrigidBody->SetIdentifier(myid); // NB fatto solo per le sfere!!!!!!!!!
-				      
-				// mrigidBody->SetRollingFriction(surface_particles_rolling_friction);
-				// mrigidBody->SetSpinningFriction(surface_particles_spinning_friction);
-
-
-				// Define a collision shape 
-				mrigidBody->GetCollisionModel()->ClearModel();
-				mrigidBody->GetCollisionModel()->AddSphere(sphrad3);
-				//mrigidBody->GetCollisionModel()->AddSphere(sphrad, &ChVector<>(0.005,0,0)); // etc. optional
-				mrigidBody->GetCollisionModel()->BuildModel();
-				mrigidBody->SetCollide(true);
-
-				// Attach a visualization shape asset. 
-				ChSharedPtr<ChSphereShape> msphere(new ChSphereShape);
-				msphere->GetSphereGeometry().rad = sphrad3 * particle_magnification; 
-				msphere->GetSphereGeometry().center = ChVector<>(0,0,0);
-				mrigidBody->AddAsset(msphere);
-				/* etc. optional
-				ChSharedPtr<ChSphereShape> msphere2(new ChSphereShape);
-				msphere2->GetSphereGeometry().rad = sphrad*5; // test****
-				msphere2->GetSphereGeometry().center = ChVector<>(0.005,0,0);
-				mrigidBody->AddAsset(msphere2);
-				*/
-
-				// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
-				electric_asset->Cdim         = ChVector<>(2*sphrad3,2*sphrad3,2*sphrad3);
-				electric_asset->fraction	 = ElectricParticleProperty::e_fraction_sphere;
-				electric_asset->birthdate	 = mysystem.GetChTime();
-				mrigidBody->AddAsset(electric_asset);
-				
-				// Finally, do not forget to add the body to the system:
-				mysystem.Add(mrigidBody);
-
-				created_body = mrigidBody;
-				created_electrical_asset = electric_asset; // for reference later
-
-			}
-			//***********************************************************************************************************************
-			if ((rand_shape_fract > (sph_fraction + sph2_fraction + sph3_fraction)) && 
-				(rand_shape_fract < box_fraction+(sph_fraction + sph2_fraction + sph3_fraction)))
-			{
-				double xscale = 1.3*(1-0.8*ChRandom()); // for oddly-shaped boxes..
-				double yscale = 1.3*(1-0.8*ChRandom());
-				double zscale = 1.3*(1-0.8*ChRandom());
-
-				//	ChCollisionModel::SetDefaultSuggestedEnvelope(0.002);
-				//	ChCollisionModel::SetDefaultSuggestedMargin  (0.002);
-
-				// Create a body
-				ChSharedPtr<ChBody> mrigidBody(new ChBody);
-
-				mrigidBody->SetPos(rand_position);
-				mrigidBody->SetMass(sphmass);
-				mrigidBody->SetInertiaXX(ChVector<>(sphinertia,sphinertia,sphinertia));
-				mrigidBody->SetFriction(surface_particles_friction);
-				mrigidBody->SetImpactC(surface_particles_restitution); 
-
-				// Define a collision shape 
-				mrigidBody->GetCollisionModel()->ClearModel();
-				mrigidBody->GetCollisionModel()->AddBox(sphrad*2*xscale, sphrad*2*yscale, sphrad*2*yscale);
-				// oppure aggiungi molte sfere che 'approssimano' la sagoma, es per cilindro:
-				//for (int i=0; i<5; ++i)
-				//	mrigidBody->GetCollisionModel()->AddSphere(sphrad, &ChVector<>(i*0.001,0,0));
-				mrigidBody->GetCollisionModel()->BuildModel();
-				mrigidBody->SetCollide(true);
-
-				// Attach a visualization shape asset. 
-				ChSharedPtr<ChBoxShape> mbox(new ChBoxShape);
-				mbox->GetBoxGeometry().SetLenghts(ChVector<>(sphrad*2*xscale, sphrad*2*yscale, sphrad*2*yscale) * particle_magnification);
-				mrigidBody->AddAsset(mbox);
-
-				// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
-				electric_asset->Cdim         = ChVector<>(2*sphrad,2*sphrad,2*sphrad);
-				electric_asset->fraction	 = ElectricParticleProperty::e_fraction_box;
-				electric_asset->birthdate	 = mysystem.GetChTime();
-				mrigidBody->AddAsset(electric_asset);
-				
-				// Finally, do not forget to add the body to the system:
-				mysystem.Add(mrigidBody);
-
-				created_body = mrigidBody; // for reference later
-				created_electrical_asset = electric_asset; // for reference later
-			}
-
-			if ((rand_shape_fract > box_fraction+(sph_fraction + sph2_fraction + sph3_fraction)))
-			{
-
-				//	ChCollisionModel::SetDefaultSuggestedEnvelope(0.002);
-				//	ChCollisionModel::SetDefaultSuggestedMargin  (0.002);
-
-				// Create a body
-				ChSharedPtr<ChBody> mrigidBody(new ChBody);
-
-				mrigidBody->SetPos(rand_position);
-				mrigidBody->SetMass(cylmass);
-				mrigidBody->SetInertiaXX(ChVector<>(cylinertia,cylinertia2,cylinertia));
-				mrigidBody->SetFriction(surface_particles_friction);
-				mrigidBody->SetImpactC(surface_particles_restitution); 
-
-				// Define a collision shape 
-				mrigidBody->GetCollisionModel()->ClearModel();
-				mrigidBody->GetCollisionModel()->AddCylinder(sphrad,sphrad,cylhei);
-				mrigidBody->GetCollisionModel()->BuildModel();
-				mrigidBody->SetCollide(true);
-
-				// Attach a visualization shape asset. 
-				ChSharedPtr<ChCylinderShape> mcyl(new ChCylinderShape);
-				mcyl->GetCylinderGeometry().rad = sphrad;
-				mcyl->GetCylinderGeometry().p1 = ChVector<>(0, cylhei/2,0) * particle_magnification;
-				mcyl->GetCylinderGeometry().p2 = ChVector<>(0,-cylhei/2,0) * particle_magnification;
-				mrigidBody->AddAsset(mcyl);
-
-				// Attach a custom asset. Look how to create and add a custom asset to the object! ***ALEX
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
-				electric_asset->Cdim         = ChVector<>(sphrad*2,cylhei,sphrad*2);
-				electric_asset->fraction	 = ElectricParticleProperty::e_fraction_cylinder;
-				electric_asset->birthdate	 = mysystem.GetChTime();
-				mrigidBody->AddAsset(electric_asset);
-				
-				// Finally, do not forget to add the body to the system:
-				mysystem.Add(mrigidBody);
-
-				created_body = mrigidBody; // for reference later
-				created_electrical_asset = electric_asset; // for reference later
-			}
-
-			//
-			// 2 ---- Adjust stuff that depends on the metal/plastic fraction
-			//
-
-			// Depending on a randomized fraction, set the material type as 'plastic' 
-			// or 'metal', by setting the 'material_type' in the ElectricParticleProperty of the
-			// created particle and the 'conductivity' (regardless if it was a cylinder 
-			// or cube etc.) ***ALEX
-			if (!created_electrical_asset.IsNull())
-			{
-				  
-				//double rand_mat = ChRandom();
-
-				//double plastic_fract = 0.7;
-					
-				if (rand_shape_fract > sph_fraction+sph2_fraction+box_fraction+cyl_fraction) //(rand_mat < plastic_fract)
-				{
-					created_electrical_asset->conductivity = 0;
-					created_electrical_asset->material_type = ElectricParticleProperty::e_mat_plastic;
-
-					// Attach a 'pink' texture to easily recognize plastic stuff in 3d view
-					ChSharedPtr<ChTexture> mtexture(new ChTexture);
-					mtexture->SetTextureFilename("../objects/pinkwhite.png");
-					created_body->AddAsset(mtexture);
-
-					// Multiply the default mass & intertia tensor by density (previously assumed =1)
-					
-					created_body->SetDensity((float)densityPlastic);
-					created_body->SetMass( created_body->GetMass() * densityPlastic);
-					created_body->SetInertiaXX( created_body->GetInertiaXX() * densityPlastic);
-				} 
-				if (rand_shape_fract < sph_fraction+sph2_fraction+box_fraction+cyl_fraction) //(rand_mat > plastic_fract)
-				{
-					created_electrical_asset->conductivity = 6428000;//6670000 conducibilità vecchia;
-					created_electrical_asset->material_type = ElectricParticleProperty::e_mat_metal;
-
-					// Attach a 'blue' texture to easily recognize metal stuff in 3d view
-					ChSharedPtr<ChTexture> mtexture(new ChTexture);
-					mtexture->SetTextureFilename("../objects/bluwhite.png");
-					created_body->AddAsset(mtexture);
-
-					// Multiply the default mass & intertia tensor by density (previously assumed =1)
-			
-					created_body->SetDensity((float)densityMetal);
-					created_body->SetMass( created_body->GetMass() * densityMetal);
-					created_body->SetInertiaXX( created_body->GetInertiaXX() * densityMetal);
-				}
-
-
-				if (created_electrical_asset->fraction == ElectricParticleProperty::e_fraction_sphere)
-				{
-				}
-
-			}
-
-			//
-			// 3 ---- Set parameters that are common for whatever created particle, ex. limit speed threshold:
-			//
-
-			// This is an optional hack that largely affects the stability of the
-			// simulation. 
-			// In fact, if particles happen to spin too fast, the collision detection
-			// starts to be very slow, and maybe also inaccurate; also, the time integration
-			// could diverge. To get rid of this problem wihtout reducing too much the timestep, 
-			// one can enable a limit on angular velocity and/or linear velocity. NOTE that 
-			// this achieves greater stability at the cost of lower realism of the simulation, 
-			// so it should not be abused. ***ALEX
-
-			bool do_velocity_clamping = true;
-
-			if (!created_body.IsNull() && do_velocity_clamping)
-			{
-				created_body->SetLimitSpeed(true);
-				created_body->SetMaxSpeed(5);
-				created_body->SetMaxWvel(250);
-			}
-
-			//
-			// 4 ---- Irrlicht setup for enabling the 3d view of the particle
-			//
-
-			// If Irrlicht is used, setup also the visualization proxy.
-			// This is necessary so that Irrlicht 3D view can show the visualization
-			// assets that have been added to the created bodies. **ALEX
-			if (!created_body.IsNull() && irr_application)
-			{
-				irr_application->AssetBind(created_body);
-				irr_application->AssetUpdate(created_body);
-			}
-
-			//
-			// 5  ---- If a POV exporter is used, one must add the particle to its database
-			// 
-
-			if (!created_body.IsNull() && mpov_exporter && save_POV_screenshots)
-			{
-				mpov_exporter->Add(created_body);
-			}
-
-
-			// 
-			// 5 ---- it could be useful to attach an asset for storing the trajectory of particle
-			//
-
-			if (!created_body.IsNull())
-			{
-				ChSharedPtr<ParticleTrajectory> massettraj(new ParticleTrajectory);
-				created_body->AddAsset(massettraj);
-			}
-
-			// 
-			// 6 --- set initial speed to particles as soon as created, so they do not have transient slip with belt
-			//
-
-			if (init_particle_speed)
-			{
-				created_body->SetPos_dt(ChVector<>(0,0,0));
-				//created_body->SetPos_dt(ChVector<>(drumspeed*(drumdiameter/2.0), 0,0));
-			}
-
-		}
-
-	} 
-
-
+	
 	     
 		///	  
 		/// Function that deletes old debris 
@@ -992,7 +548,7 @@ public:
 				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
 				if (myasset.IsType<ElectricParticleProperty>())
 				{
-					ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
+					ChSharedPtr<ElectricParticleProperty> electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 					double particle_birthdate  = electricproperties->birthdate ;
 					double particle_age = mysystem.GetChTime() - particle_birthdate;
 					if (particle_age > max_age)
@@ -1008,11 +564,11 @@ public:
 				ChSharedPtr<ChBody> mysharedbody(abody); // ..shared pointer
 
 				mysystem.Remove(mysharedbody);
+
 				// mysharedbody->RemoveRef(); //***NOT needed - previously needed cause always Add() to POV exporter..
 				i--; // this because if deleted, the rest of the array is shifted back one position..
 			}
 		}
-
 	}
 
 
@@ -1040,7 +596,7 @@ public:
 				{
 					// OK! THIS WAS A PARTICLE! ***ALEX
 					was_a_particle = true;		
-					electricproperties = myasset;
+					electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 				} 
 			}
 
@@ -1082,7 +638,7 @@ public:
 				if (myasset.IsType<ParticleTrajectory>())
 				{
 					// OK! trajectory storage!	
-					trajectoryasset = myasset;
+					trajectoryasset = myasset.DynamicCastTo<ParticleTrajectory>();
 					trajectoryasset->positions.push_back( abody->GetPos() );
 					trajectoryasset->speeds.push_back( abody->GetPos_dt() );
 					
@@ -1121,7 +677,7 @@ public:
 				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
 				if (myasset.IsType<ParticleTrajectory>())
 				{
-					trajectoryasset = myasset;
+					trajectoryasset = myasset.DynamicCastTo<ParticleTrajectory>();
 					int npoints = 0;
 					std::list< ChVector<> >::const_iterator iterator;
 					std::list< ChVector<> >::const_iterator iteratorspeed;
@@ -1179,11 +735,6 @@ public:
 		UserInterfaceEventReceiver receiver(&application, this);
 		  // note how to add the custom event receiver to the default interface:
 		application.SetUserEventReceiver(&receiver);
-
-
-		// Set small collision envelopes for objects that will be created from now on..
-		//ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
-		//ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
 
 
 	
@@ -1256,7 +807,7 @@ public:
 			drum_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
 			
 			// fetch mrigidBodyDrum pointer! will be used for changing the friction, the collision family, and later to create the motor
-		ChSharedPtr<ChBodyAuxRef> mrigidBodyDrum = mphysicalSystem.Search("drum-1");  
+		ChSharedPtr<ChBodyAuxRef> mrigidBodyDrum = mphysicalSystem.Search("drum-1").DynamicCastTo<ChBodyAuxRef>();  
 		if (mrigidBodyDrum.IsNull())
 			GetLog() << "ERROR: cannot find drum-1 from its name in the C::E system! ! \n";
 		else
@@ -1272,7 +823,7 @@ public:
 		
 		//***Ida
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter1 = mphysicalSystem.Search("Splitter-10");  
+		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter1 = mphysicalSystem.Search("Splitter-10").DynamicCastTo<ChBodyAuxRef>();  
 		if (mrigidBodySplitter1.IsNull())
 			GetLog() << "ERROR: cannot find Splitter-10 from its name in the C::E system! ! \n";
 		else
@@ -1284,7 +835,7 @@ public:
 			mrigidBodySplitter1->SetFriction(0.1f); 
 		}
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1");  
+		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1").DynamicCastTo<ChBodyAuxRef>();  
 		if (mrigidBodySplitter2.IsNull())
 			GetLog() << "ERROR: cannot find Splitter2-1 from its name in the C::E system! ! \n";
 		else
@@ -1296,7 +847,7 @@ public:
 			mrigidBodySplitter2->SetFriction(0.1f); 
 		}
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1");  
+		ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1").DynamicCastTo<ChBodyAuxRef>();  
 		if (mrigidBodySpazzola.IsNull())
 			GetLog() << "ERROR: cannot find Spazzola-1 from its name in the C::E system! ! \n";
 		else
@@ -1308,7 +859,7 @@ public:
 					
 		}
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodyConveyor = mphysicalSystem.Search("conveyor-1");  
+		ChSharedPtr<ChBodyAuxRef> mrigidBodyConveyor = mphysicalSystem.Search("conveyor-1").DynamicCastTo<ChBodyAuxRef>();  
 		if (mrigidBodyConveyor.IsNull())
 			GetLog() << "ERROR: cannot find conveyor from its name in the C::E system! ! \n";
 		else
@@ -1417,9 +968,9 @@ public:
 			
 			pov_exporter.SetCustomPOVcommandsScript(" \
 				light_source {   \
-				  <0.5, 0.8, 0>  \
-				  color rgb<1.8,1.8,1.8> \
-				  area_light <0.5, 0, 0>, <0, 0, 0.5>, 5, 5 \
+				  <0.5, 0.8, 0.2>  \
+				  color rgb<1.7,1.7,1.7> \
+				  area_light <0.4, 0, 0>, <0, 0, 0.4>, 5, 5 \
 				  adaptive 1 \
 				  jitter\
 				} \
@@ -1429,7 +980,7 @@ public:
 
 					// IMPORTANT! Tell to the POVray exporter that 
 					// he must take care of converting the shapes of
-					// all items!
+					// all items (that have been added so far)!
 			pov_exporter.AddAll();
 
 					// IMPORTANT! Create the two .pov and .ini files for POV-Ray (this must be done
@@ -1448,12 +999,23 @@ public:
 		if (irr_cast_shadows)
 			application.AddShadowAll();
 
+		//
+		// What to do by default on ALL newly created particles? 
+		// A callback executed at each particle creation can be attached to the emitter..
+		// 
 
-			// What to do by default on ALL newly created particles? 
+		// a- define a class that implement your custom PostCreation method...
 		class MyCreatorForAll : public ChCallbackPostCreation
 		{
 			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
 			{
+				// Set the friction properties (using a shared ChSurfaceMaterial
+				mbody->SetMaterialSurface( asurface_material ); 
+
+				// Attach an asset to show trajectories
+				//ChSharedPtr<ParticleTrajectory> massettraj(new ParticleTrajectory);
+				//mbody->AddAsset(massettraj);
+
 				// Enable Irrlicht visualization for all particles
 				airrlicht_application->AssetBind(mbody);
 				airrlicht_application->AssetUpdate(mbody);
@@ -1467,13 +1029,18 @@ public:
 			}
 			irr::ChIrrApp* airrlicht_application;
 			ChPovRay* apov_exporter;
+			ChSharedPtr<ChMaterialSurface> asurface_material;
 		};
+		// b- create the callback object...
 		MyCreatorForAll* mcreation_callback = new MyCreatorForAll;
+		// c- set callback own data that he might need...
 		mcreation_callback->airrlicht_application = &application;
+		mcreation_callback->asurface_material = this->surface_particles;
 		if (this->save_POV_screenshots) 
 			mcreation_callback->apov_exporter = &pov_exporter;
 		else
 			mcreation_callback->apov_exporter = 0;
+		// d- attach the callback to the emitter!
 		emitter.SetCallbackPostCreation(mcreation_callback);
 
 
@@ -1489,9 +1056,6 @@ public:
 		
 		application.GetSystem()->SetIntegrationType(ChSystem::INT_ANITESCU);
 		application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD);// LCP_ITERATIVE_SOR_MULTITHREAD or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
-			// important! dt is small, and particles are small, so it's better to keep this small...
-		application.GetSystem()->SetMaxPenetrationRecoverySpeed(0.15);// not needed in INT_TASORA, only for INT_ANITESCU
-		application.GetSystem()->SetMinBounceSpeed(0.1);
 
 		application.GetSystem()->Set_G_acc(ChVector<>(0, -9.81, 0));
 
@@ -1544,25 +1108,13 @@ public:
 
 				
 				// Continuosly create debris that fall on the conveyor belt
-				
-				// **ALEX*** new approach!
 				this->emitter.EmitParticles(mphysicalSystem, application.GetTimestep()); //***TEST***
 
-				if (debris_number <= max_numb_particles)
-				{
-				create_debris(	application.GetTimestep(), 
-								STATIC_flow, 
-								nozzle_csys,
-								*application.GetSystem(), 
-								&application, 
-								&pov_exporter);
-
-				debris_number = debris_number + particles_dt;
-				}
 
 				// Limit the max age (in seconds) of debris particles on the scene, 
 				// deleting the oldest ones, for performance
-				purge_debris (*application.GetSystem(),6);
+				purge_debris (*application.GetSystem(), this->max_particle_age);
+
 
 				// Maybe the user played with the slider and changed the speed of drum...
 				if (!mengine.IsNull())
@@ -1602,15 +1154,16 @@ public:
 									// ok, its a particle!
 
 									
-									ChSharedPtr<ElectricParticleProperty> electricproperties = myasset;
+									ChSharedPtr<ElectricParticleProperty> electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 									//double my_cond  = electricproperties->conductivity ;
 									ChVector<> my_ElectricForce = electricproperties->ElectricForce;
 									ChVector<> my_ElectricImageForce = electricproperties->ElectricImageForce;
 									ChVector<> my_StokesForce = electricproperties->StokesForce;
 									double rad = ((abody->GetMass())*3)/((abody->GetDensity())*4*CH_C_PI);
-									
+									int fraction_identifier = (int)electricproperties->fraction; // id will be 0=box, 1=cylinder, 2=sphere, 3=hull, 4=shavings, etc. (see enum)
+									int material_identifier = (int)electricproperties->material_type; // id will be 0=plastic, 1=metal, 2=others (see enum)
 									// Save on disk some infos...
-									file_for_output << abody->GetIdentifier()<< ", "
+									file_for_output << fraction_identifier << ", "
 													<< abody->GetPos().x << ", "
 													<< abody->GetPos().y << ", "
 													<< abody->GetPos().z << ", "
