@@ -37,7 +37,7 @@ public:
 		drumdiameter = 0.320;		//diameter of drum
 		drum_width=0.3;				//used to switch of electric forces out of drum
 		electrodediameter = 0.038;	//for force computations
-		U = 30000;					//supplied high-voltage [v]
+		U = -35000;					//supplied high-voltage [v]
 		L = 0.267;					//certer distance of rotating roll electrode and electrostatic pole *****ida
 		alpha = (CH_C_PI/180)*30;	//angle of horizontal line and electrodes center line *****ida
 		epsilon  = 8.85941e-12;		//dielectric constant [F/m] *****ida 
@@ -148,6 +148,7 @@ public:
 
 				ChVector<> vE (Ex, Ey, Ez);
 				double E = vE.Length();
+				double Emax = -11.818*U-514.87;
 
 	          
 				
@@ -162,7 +163,7 @@ public:
 					{
 						if (electricproperties->chargeM == 0)
 						{
-						electricproperties->chargeM = 0.666666666666667*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E;
+						electricproperties->chargeM = (2./3.)*pow(CH_C_PI,3)*epsilon*pow(average_rad,2)*E;
 						electricproperties->chargeM *= (1.0 - 0.3*ChRandom() );
 						
 						}
@@ -198,10 +199,10 @@ public:
 					{
 						if (electricproperties->chargeP == 0)
 						{
-							electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*450000*(epsilonR/(epsilonR+2)); // charge
+							electricproperties->chargeP = 3*CH_C_PI*epsilonO*pow(2*average_rad,2)*Emax*(epsilonR/(epsilonR+2)); // charge
 							electricproperties->chargeP *= (1.0 - 0.3*ChRandom() );
 						}
-					} //15000000,750000, 
+					} //15000000,750000,450000
 					// discharge the particle? (contact w. blade)
 					if (distx < -(drumdiameter*0.5 -0.009) && (disty > -(drumdiameter*0.5 + 0.009)) || sqrt(pow(distx,2)+ pow(disty,2))> (1.03*drumdiameter*0.5))
 					{
