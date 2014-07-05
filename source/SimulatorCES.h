@@ -239,7 +239,7 @@ public:
 				//ChSharedPtr<ChTexture> mtexture(new ChTexture);
 				//mtexture->SetTextureFilename("../objects/pinkwhite.png");
 				//mbody->AddAsset(mtexture);
-				ChSharedPtr<ChVisualization> mvisual(new ChVisualization);
+				ChSharedPtr<ChColorAsset> mvisual(new ChColorAsset);
 				mvisual->SetColor(ChColor(0.9f,0.4f,0.2f));
 				mbody->AddAsset(mvisual);
 				  // Attach a custom asset. It will hold electrical properties
@@ -278,7 +278,7 @@ public:
 				//ChSharedPtr<ChTexture> mtexture(new ChTexture);
 				//mtexture->SetTextureFilename("../objects/bluwhite.png");
 				//mbody->AddAsset(mtexture);
-				ChSharedPtr<ChVisualization> mvisual(new ChVisualization);
+				ChSharedPtr<ChColorAsset> mvisual(new ChColorAsset);
 				mvisual->SetColor(ChColor(0.3f,0.6f,0.7f));
 				mbody->AddAsset(mvisual);
 				  // Attach a custom asset. It will hold electrical properties
