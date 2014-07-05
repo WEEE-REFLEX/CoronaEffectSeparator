@@ -22,7 +22,8 @@
 #include "core/ChMath.h"
 #include "core/ChDistribution.h"
 #include "collision/ChCCollisionSystemBullet.h"
-//#include <irrlicht.h>
+#include "particlefactory/ChParticleEmitter.h"
+
 #include <fstream>
 #include "unit_PYTHON/ChPython.h"
 #include "unit_POSTPROCESS/ChPovRay.h"
@@ -34,7 +35,6 @@
 
 #include "ElectricParticleProperty.h"
 #include "UserInterfaceEventReceiver.h"
-#include "ChParticleEmitter.h"
 #include "ElectricForcesCES.h"
 #include "ParserEmitter.h"
 #include "ParserElectricForcesCES.h"

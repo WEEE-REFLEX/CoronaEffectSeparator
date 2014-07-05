@@ -1,7 +1,7 @@
 #ifndef PARSERCHRANDOMSHAPECREATOR_H
 #define PARSERCHRANDOMSHAPECREATOR_H
 
-#include "ChParticleEmitter.h"
+#include "particlefactory/ChParticleEmitter.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filereadstream.h"

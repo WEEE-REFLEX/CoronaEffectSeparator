@@ -1,7 +1,7 @@
 #ifndef PARSEREMITTER_H
 #define PARSEREMITTER_H
 
-#include "ChParticleEmitter.h"
+#include "particlefactory/ChParticleEmitter.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filereadstream.h"

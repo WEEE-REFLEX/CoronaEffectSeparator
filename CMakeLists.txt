@@ -48,7 +48,6 @@ ADD_EXECUTABLE(conveyor     	source/conveyor_Ida.cpp
 				source/UserInterfaceEventReceiver.h
 				source/ElectricParticleProperty.h
 				source/ElectricForcesCES.h
-				source/ChParticleEmitter.h
 				source/ParserEmitter.h
 				source/ParserElectricForcesCES.h
 				source/ParserChRandomShapeCreator.h
