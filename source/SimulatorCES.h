@@ -1069,17 +1069,6 @@ public:
 
 		application.GetSystem()->Set_G_acc(ChVector<>(0, -9.81, 0));
 
-		double threshold = -0.815;
-		ofstream record;
-		record.open("output\\threshold.dat",ios::trunc); 
-		record << "Time" << "\t";
-		record << "X Position" << "\t";
-		record << "Y Position" << "\t";
-		record << "Z Position" << "\t";
-		record << "Shape" << "\t";
-		record << "Mass (kg)" << "\t";
-		record << "Conductivity" << "\n";
-		
 		int savenum = 0;
 
 		ChFileutils::MakeDirectory("screenshots");
