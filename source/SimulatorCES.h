@@ -74,11 +74,6 @@ public:
 	double drumspeed_rpm; // [rpm]
 	double drumspeed_radss; //[rad/s]
 	
-	/* old, unused
-	double sphrad;
-	double sphrad2;
-	double sphrad3;
-	*/
 
 	// material surfaces
 	float surface_drum_friction;
