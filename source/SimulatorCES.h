@@ -194,6 +194,8 @@ public:
 
 		timestep = 0.001;
 
+		Tmax = 0.1;
+
 		// Set small collision envelopes for objects that will be created from now on..
 		ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
 		ChCollisionModel::SetDefaultSuggestedMargin  (0.0005); //0.0008
@@ -391,6 +393,11 @@ public:
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
 				this->timestep = document[token].GetDouble();
+			}
+			token = "Tmax";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->Tmax = document[token].GetDouble();
 			}
 			token = "surface_drum_friction";
 			if (document.HasMember(token)) {
@@ -1083,6 +1090,9 @@ public:
 
 		while(application.GetDevice()->run()) 
 		{
+			if (mphysicalSystem.GetChTime() > this->Tmax)
+				return 0;
+
 			application.GetVideoDriver()->beginScene(true, true, SColor(255,140,161,192));
 
 			application.DrawAll();
