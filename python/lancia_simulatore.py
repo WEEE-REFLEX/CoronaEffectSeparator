@@ -16,7 +16,9 @@ import subprocess
 import sys
 import os
 from numpy import *
-
+from matplotlib import *
+from matplotlib.pyplot import *
+from mpl_toolkits.mplot3d import Axes3D
 
 
 
@@ -53,6 +55,7 @@ def RunChronoSimulation(parameters):
     executable = "conveyor.exe"
     template   = "template.ces"
     argument   =  directory+"__run__.ces"
+    resultfile =  directory+"results.dat"
 
     # Parameters.
     # These are the placeholders that must be used in the
@@ -120,10 +123,12 @@ def RunChronoSimulation(parameters):
     # Initialize the result array as zeros only
     myresult=zeros(15)
 
-    # ....TO DO..!!!
-    #    load the .dat or .txt output file,
-    #    process it to find useful results, store those results
-    #    in the 'myresult' array.
+    # load the output result file (assuming it is in CSV format)
+    resultdata = genfromtxt(resultfile, delimiter=",")
+
+    # process data to find useful results, store those results
+    # in the 'myresult' array: (ex. do more sphisticated processing here)
+    myresult = resultdata
 
 
     # - 5 -
@@ -142,3 +147,6 @@ myparameters=array([    31000,  # voltage
                     ])
 
 myresults = RunChronoSimulation(myparameters)
+
+print (myresults)
+
