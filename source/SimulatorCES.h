@@ -116,8 +116,9 @@ public:
 	bool init_particle_speed;
 	double particle_magnification; // for larger visualization of particle
 	std::string solidworks_py_modelfile;
+	std::string results_file;
 	double timestep;
-
+	double Tmax;
 
 
 		///
@@ -129,6 +130,8 @@ public:
 		// Initialize member data:
 
 		solidworks_py_modelfile = "../CAD_conveyor/conveyor_Ida"; // note! do not add ".py" after the filename
+
+		results_file = "output/results.dat";
 
 		drumspeed_rpm = 44.8;
 		drumspeed_radss = drumspeed_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
@@ -352,6 +355,11 @@ public:
 			if (document.HasMember(token)) {
 				if (!document[token].IsString()) {throw (ChException( "Invalid filename string after '"+std::string(token)+"'"));}
 				this->solidworks_py_modelfile = document[token].GetString();
+			}
+			token = "results_file";
+			if (document.HasMember(token)) {
+				if (!document[token].IsString()) {throw (ChException( "Invalid filename string after '"+std::string(token)+"'"));}
+				this->results_file = document[token].GetString();
 			}
 			token = "drum_rpm";
 			if (document.HasMember(token)) {
