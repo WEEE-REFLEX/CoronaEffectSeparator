@@ -11,7 +11,8 @@
 #include "ParserChDistribution.h"
 #include "assets/ChColorAsset.h"
 
-using namespace particlefactory;
+using namespace chrono;
+using namespace chrono::particlefactory;
 
 
 /// Class for parsing data of ChRandomShapeGenerator

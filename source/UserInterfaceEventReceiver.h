@@ -12,16 +12,17 @@
 class SimulatorCES;
 
 
-class UserInterfaceEventReceiver : public IEventReceiver
+
+class UserInterfaceEventReceiver : public irr::IEventReceiver
 {
 public:
 
-	UserInterfaceEventReceiver(ChIrrAppInterface* myapp, SimulatorCES* mysimulator);
+	UserInterfaceEventReceiver(irr::ChIrrAppInterface* myapp, SimulatorCES* mysimulator);
 
-	bool OnEvent(const SEvent& event);
+	bool OnEvent(const irr::SEvent& event);
 
 private: 
-	ChIrrAppInterface* application;
+	irr::ChIrrAppInterface* application;
 	SimulatorCES* simulator;
 
 public:

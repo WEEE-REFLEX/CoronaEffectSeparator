@@ -1,6 +1,7 @@
 #ifndef ELECTRICPARTICLEPROPERTY_H
 #define ELECTRICPARTICLEPROPERTY_H
 
+using namespace chrono;
 
 // If one needs to add special data to a particle/object, the proper way to
 // do this is by inheriting a custom class from the base ChAsset. 

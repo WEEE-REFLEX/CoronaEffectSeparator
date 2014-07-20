@@ -42,15 +42,17 @@
 // Use the namespace of Chrono
 
 using namespace chrono;
-using namespace postprocess;
-using namespace particlefactory;
+using namespace chrono::postprocess;
+using namespace chrono::collision;
+using namespace chrono::particlefactory;
 
 // Use the main namespaces of Irrlicht
+using namespace irr;
+using namespace irr::core;
+using namespace irr::scene;
+using namespace irr::video;
 
 using namespace std;
-
-// Static values valid through the entire program (bad
-// programming practice, but enough for quick tests)
 
 
 
@@ -725,13 +727,12 @@ public:
 	int simulate()
 	{
 
-		// From now on, functions in ChParticlesSceneNodeTools will find 3d .obj models 
-		// in "../objects/", instead of default "../data/" dir:
-		irrlicht_default_obj_dir = "../objects/";
-
 		// Create the Irrlicht visualization (open the Irrlicht device, 
 		// bind a simple user interface, etc. etc.)
 		ChIrrApp application(&mphysicalSystem, L"Conveyor belt",core::dimension2d<u32>(800,600),false);
+
+		// Change default font to something better
+		//application.SetFonts("../objects/fonts/arial8.xml");
 
 		// Easy shortcuts to add camera, lights, logo and sky in Irrlicht scene:
 		application.AddTypicalLogo("../objects/");
@@ -1212,7 +1213,7 @@ public:
 				
 			
 			}
-
+			
 			application.GetVideoDriver()->endScene();  
 			
 		}

@@ -9,6 +9,8 @@
 #include <fstream>
 
 
+using namespace chrono;
+
 
 /// Class for parsing data of ParserChDistribution
 class ParserChDistribution

@@ -5,6 +5,10 @@
 #include "ElectricParticleProperty.h"
 #include <fstream>
 
+
+using namespace chrono;
+
+
 class ElectricForcesCES 
 { 
 public:
@@ -251,6 +255,7 @@ public:
 
 	
 };
+
 
 
 #endif
