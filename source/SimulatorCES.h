@@ -23,6 +23,8 @@
 #include "core/ChDistribution.h"
 #include "collision/ChCCollisionSystemBullet.h"
 #include "particlefactory/ChParticleEmitter.h"
+#include "particlefactory/ChParticleRemover.h"
+#include "particlefactory/ChParticleProcessor.h"
 
 #include <fstream>
 #include "unit_PYTHON/ChPython.h"
@@ -42,15 +44,76 @@
 // Use the namespace of Chrono
 
 using namespace chrono;
-using namespace postprocess;
-using namespace particlefactory;
+using namespace chrono::postprocess;
+using namespace chrono::collision;
+using namespace chrono::particlefactory;
 
 // Use the main namespaces of Irrlicht
+using namespace irr;
+using namespace irr::core;
+using namespace irr::scene;
+using namespace irr::video;
 
 using namespace std;
 
-// Static values valid through the entire program (bad
-// programming practice, but enough for quick tests)
+
+
+
+
+			/// Utility function that plots a matrix over a rectangle
+	static void drawDistribution(video::IVideoDriver* driver,
+					 chrono::ChMatrix<> Z, // distribution matrix
+					 chrono::ChCoordsys<> mpos, // center coordinates of the rectangle that measures flow
+					 double x_size, double y_size, // size of the rectangle
+					 video::SColor mcol = video::SColor(50,80,110,110),
+					 bool use_Zbuffer = false
+					)
+	{ 
+			driver->setTransform(video::ETS_WORLD, core::matrix4());
+			video::SMaterial mattransp;
+			mattransp.ZBuffer= true;
+			mattransp.Lighting=false;
+			driver->setMaterial(mattransp);
+			
+			chrono::ChVector<> V1a(-x_size*0.5, y_size*0.5,0);
+			chrono::ChVector<> V2a( x_size*0.5, y_size*0.5,0);
+			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1a),mpos.TrasformLocalToParent(V2a), mcol, use_Zbuffer);
+			chrono::ChVector<> V1b(-x_size*0.5,-y_size*0.5,0);
+			chrono::ChVector<> V2b( x_size*0.5,-y_size*0.5,0);
+			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1b),mpos.TrasformLocalToParent(V2b), mcol, use_Zbuffer);
+			chrono::ChVector<> V1c( x_size*0.5, y_size*0.5,0);
+			chrono::ChVector<> V2c( x_size*0.5,-y_size*0.5,0);
+			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1c),mpos.TrasformLocalToParent(V2c), mcol, use_Zbuffer);
+			chrono::ChVector<> V1d(-x_size*0.5, y_size*0.5,0);
+			chrono::ChVector<> V2d(-x_size*0.5,-y_size*0.5,0);
+			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1d),mpos.TrasformLocalToParent(V2d), mcol, use_Zbuffer);
+
+			for (int iy = 0; iy < Z.GetColumns(); ++iy)
+			{
+				double mystep = y_size/((double)Z.GetColumns());
+				double my = -0.5*y_size + iy*mystep + 0.5*mystep;
+				for (int ix = 0; ix < Z.GetRows(); ++ix)
+				{
+					double mxstep = x_size/((double)Z.GetRows());
+					double mx = -0.5*x_size + ix*mxstep + 0.5*mxstep;
+					if (ix >0)
+					{
+						chrono::ChVector<> Vx1(mx-mxstep, my, Z(ix-1,iy));
+						chrono::ChVector<> Vx2(mx        ,my, Z(ix  ,iy));
+						ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(Vx1),mpos.TrasformLocalToParent(Vx2), mcol, use_Zbuffer);
+					}
+					if (iy >0)
+					{
+						chrono::ChVector<> Vy1(mx, my-mystep, Z(ix,iy-1));
+						chrono::ChVector<> Vy2(mx, my       , Z(ix,iy  ));
+						ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(Vy1),mpos.TrasformLocalToParent(Vy2), mcol, use_Zbuffer);
+					}
+				}
+			}
+	}
+
+
+
 
 
 
@@ -725,13 +788,12 @@ public:
 	int simulate()
 	{
 
-		// From now on, functions in ChParticlesSceneNodeTools will find 3d .obj models 
-		// in "../objects/", instead of default "../data/" dir:
-		irrlicht_default_obj_dir = "../objects/";
-
 		// Create the Irrlicht visualization (open the Irrlicht device, 
 		// bind a simple user interface, etc. etc.)
 		ChIrrApp application(&mphysicalSystem, L"Conveyor belt",core::dimension2d<u32>(800,600),false);
+
+		// Change default font to something better
+		//application.SetFonts("../objects/fonts/arial8.xml");
 
 		// Easy shortcuts to add camera, lights, logo and sky in Irrlicht scene:
 		application.AddTypicalLogo("../objects/");
@@ -1055,6 +1117,40 @@ public:
 
 
 
+		// 
+		// PROCESS THE FLOW with these tools:
+		// 
+
+
+		// Create also a ChParticleProcessor configured as a
+		// counter of particles that flow into a rectangle with a statistical distribution to plot:
+		//  -create the trigger:
+		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle (new ChParticleEventFlowInRectangle(0.20,0.30));
+		distrrectangle->rectangle_csys = ChCoordsys<>( 
+			drum_csys.pos + ChVector<>(0.32*0.5+0.20*0.5-0.02,-0.10,0), // position of center rectangle: a bit below drum axis
+			Q_from_AngAxis(-CH_C_PI_2,VECT_X) ); // rotate rectangle so that its Z is up
+		distrrectangle->margin = 0.05;
+		//  -create the counter, with 20x10 resolution of sampling, on x y
+		ChSharedPtr<ChParticleProcessEventMassDistribution> countdistribution (new ChParticleProcessEventMassDistribution(20,10));
+		//  -create the processor and plug in the trigger and the counter:
+		ChParticleProcessor processor_distribution;
+		processor_distribution.SetEventTrigger(distrrectangle);
+		processor_distribution.SetParticleEventProcessor(countdistribution);
+		//***TODO*** a custom class similar to ChParticleProcessEventMassDistribution, but that also 
+		// distinguishes between metal and plastic particles, and updates TWO distribution matrices.
+
+		// Create a remover, i.e. an object that takes care 
+		// of removing particles that are inside or outside some volume.
+		// The fact that particles are handled with shared pointers means that,
+		// after they are removed from the ChSystem, they are also automatically
+		// deleted if no one else is referencing them.
+		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle2 (new ChParticleEventFlowInRectangle(0.20,0.30));
+		distrrectangle2->rectangle_csys = distrrectangle->rectangle_csys;
+		distrrectangle2->margin = 0.05;
+		ChSharedPtr<ChParticleProcessEventRemove> removal_event (new ChParticleProcessEventRemove);
+		ChParticleProcessor processor_remover;
+		processor_remover.SetEventTrigger(distrrectangle2);
+		processor_remover.SetParticleEventProcessor(removal_event);
 
 
 		// 
@@ -1116,6 +1212,13 @@ public:
 				// Limit the max age (in seconds) of debris particles on the scene, 
 				// deleting the oldest ones, for performance
 				purge_debris (*application.GetSystem(), this->max_particle_age);
+
+
+				// Use the processor to count particle flow in the rectangle section:
+				processor_distribution.ProcessParticles(mphysicalSystem);
+
+				// Continuosly check if some particle must be removed:
+				processor_remover.ProcessParticles(mphysicalSystem);
 
 
 				// Maybe the user played with the slider and changed the speed of drum...
@@ -1213,6 +1316,26 @@ public:
 			
 			}
 
+			// Just for fun, plot the distribution matrix, 
+			// i.e. countdistribution->mmass
+			// In this case, normalize to integral , and scale on Z
+			double yscalefactor;
+			double totmass = 0;
+			for (int ir= 0; ir< countdistribution->mmass.GetRows(); ++ir)
+				for (int ic= 0; ic< countdistribution->mmass.GetColumns(); ++ic)
+					totmass += countdistribution->mmass(ir,ic);
+			if (totmass==0) 
+				yscalefactor = 0; // if not yet particle passed through sampling rectangle
+			else
+				yscalefactor = (0.005 * countdistribution->mmass.GetRows()*countdistribution->mmass.GetColumns()) / totmass; 
+
+			drawDistribution(application.GetVideoDriver(),
+				countdistribution->mmass * yscalefactor,
+				distrrectangle->rectangle_csys,
+				distrrectangle->Xsize,
+				distrrectangle->Ysize);
+
+			
 			application.GetVideoDriver()->endScene();  
 			
 		}
