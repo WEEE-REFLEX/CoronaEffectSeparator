@@ -49,7 +49,7 @@ def RunChronoSimulation(parameters):
     # executable = "demo_emitter.exe"
     # argument   = ""
 
-    directory  = "C:/Users/tasora/Desktop/build_CES/Release/"
+    directory  = "C:/WeeReflex build/Corona_build/Release/"
     executable = "conveyor.exe"
     template   = "template.ces"
     argument   =  directory+"__run__.ces"
@@ -138,7 +138,14 @@ def RunChronoSimulation(parameters):
 
 myparameters=array([    31000,  # voltage
                         45.8,   # drum rpm
-                        500   # particles per second
+                        5000   # particles per second
+                    ])
+
+myresults = RunChronoSimulation(c)
+
+myparameters=array([    31000,  # voltage
+                        45.8,   # drum rpm
+                        300   # particles per second
                     ])
 
 myresults = RunChronoSimulation(myparameters)
