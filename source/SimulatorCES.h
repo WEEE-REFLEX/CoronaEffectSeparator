@@ -40,6 +40,7 @@
 #include "ElectricForcesCES.h"
 #include "ParserEmitter.h"
 #include "ParserElectricForcesCES.h"
+#include "ProcessFlow.h"
 
 // Use the namespace of Chrono
 
@@ -1127,17 +1128,17 @@ public:
 		//  -create the trigger:
 		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle (new ChParticleEventFlowInRectangle(0.20,0.30));
 		distrrectangle->rectangle_csys = ChCoordsys<>( 
-			drum_csys.pos + ChVector<>(0.32*0.5+0.20*0.5-0.02,-0.10,0), // position of center rectangle: a bit below drum axis
+			drum_csys.pos + ChVector<>(0.32*0.5+0.20*0.5-0.04,-0.10,0), // position of center rectangle: a bit below drum axis
 			Q_from_AngAxis(-CH_C_PI_2,VECT_X) ); // rotate rectangle so that its Z is up
 		distrrectangle->margin = 0.05;
 		//  -create the counter, with 20x10 resolution of sampling, on x y
-		ChSharedPtr<ChParticleProcessEventMassDistribution> countdistribution (new ChParticleProcessEventMassDistribution(20,10));
+		//    This is defined in ProcessFlow.h and distinguishes plastic from metal
+		ChSharedPtr<ProcessFlow> countdistribution (new ProcessFlow(20,1));
 		//  -create the processor and plug in the trigger and the counter:
 		ChParticleProcessor processor_distribution;
 		processor_distribution.SetEventTrigger(distrrectangle);
 		processor_distribution.SetParticleEventProcessor(countdistribution);
-		//***TODO*** a custom class similar to ChParticleProcessEventMassDistribution, but that also 
-		// distinguishes between metal and plastic particles, and updates TWO distribution matrices.
+
 
 		// Create a remover, i.e. an object that takes care 
 		// of removing particles that are inside or outside some volume.
@@ -1316,24 +1317,42 @@ public:
 			
 			}
 
-			// Just for fun, plot the distribution matrix, 
-			// i.e. countdistribution->mmass
+			// Just for fun, plot the distribution matrices, 
+			// i.e. countdistribution->mmass_plastic etc.
 			// In this case, normalize to integral , and scale on Z
-			double yscalefactor;
-			double totmass = 0;
-			for (int ir= 0; ir< countdistribution->mmass.GetRows(); ++ir)
-				for (int ic= 0; ic< countdistribution->mmass.GetColumns(); ++ic)
-					totmass += countdistribution->mmass(ir,ic);
-			if (totmass==0) 
-				yscalefactor = 0; // if not yet particle passed through sampling rectangle
+			double yscalefactor_plastic;
+			double totmass_plastic = 0;
+			for (int ir= 0; ir< countdistribution->mmass_plastic.GetRows(); ++ir)
+				for (int ic= 0; ic< countdistribution->mmass_plastic.GetColumns(); ++ic)
+					totmass_plastic += countdistribution->mmass_plastic(ir,ic);
+			if (totmass_plastic==0) 
+				yscalefactor_plastic = 0; // if not yet particle passed through sampling rectangle
 			else
-				yscalefactor = (0.005 * countdistribution->mmass.GetRows()*countdistribution->mmass.GetColumns()) / totmass; 
+				yscalefactor_plastic = (0.002 * countdistribution->mmass_plastic.GetRows()*countdistribution->mmass_plastic.GetColumns()) / totmass_plastic; 
 
 			drawDistribution(application.GetVideoDriver(),
-				countdistribution->mmass * yscalefactor,
+				countdistribution->mmass_plastic * yscalefactor_plastic,
 				distrrectangle->rectangle_csys,
 				distrrectangle->Xsize,
-				distrrectangle->Ysize);
+				distrrectangle->Ysize, 
+				video::SColor(255,  255,0,0) );
+
+			double yscalefactor_metal;
+			double totmass_metal = 0;
+			for (int ir= 0; ir< countdistribution->mmass_metal.GetRows(); ++ir)
+				for (int ic= 0; ic< countdistribution->mmass_metal.GetColumns(); ++ic)
+					totmass_metal += countdistribution->mmass_metal(ir,ic);
+			if (totmass_plastic==0) 
+				yscalefactor_metal = 0; // if not yet particle passed through sampling rectangle
+			else
+				yscalefactor_metal = (0.002 * countdistribution->mmass_metal.GetRows()*countdistribution->mmass_metal.GetColumns()) / totmass_metal; 
+
+			drawDistribution(application.GetVideoDriver(),
+				countdistribution->mmass_metal * yscalefactor_metal,
+				distrrectangle->rectangle_csys,
+				distrrectangle->Xsize,
+				distrrectangle->Ysize,
+				video::SColor(255,  0,255,255) );
 
 			
 			application.GetVideoDriver()->endScene();  
