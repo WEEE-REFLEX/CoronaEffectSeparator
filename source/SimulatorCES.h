@@ -1177,7 +1177,7 @@ public:
 		while(application.GetDevice()->run()) 
 		{
 			if (mphysicalSystem.GetChTime() > this->Tmax)
-				return 0;
+				break;
 
 			application.GetVideoDriver()->beginScene(true, true, SColor(255,140,161,192));
 
