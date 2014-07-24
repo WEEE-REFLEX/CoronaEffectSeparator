@@ -1359,6 +1359,20 @@ public:
 			
 		}
 
+		// At the end ot the T max simulation time, 
+		// save output distributions to disk (non normalized for unit area/volume), 
+		// they can be a nxm matrix of 2d bins or a n-vector of 1d bins
+		GetLog() << "\n saving output distributions... \n ";
+
+		ChStreamOutAsciiFile file_for_metal("out_distribution_metal.txt");
+		countdistribution->mmass_metal.StreamOUTdenseMatlabFormat(file_for_metal);
+		ChStreamOutAsciiFile file_for_plastic("out_distribution_plastic.txt");
+		countdistribution->mmass_plastic.StreamOUTdenseMatlabFormat(file_for_plastic);
+
+
+
+		GetLog() << "\n Simulation Terminated. \n ";
+
 		return 0;
 	}
 
