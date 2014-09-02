@@ -9,15 +9,14 @@
 
 
 
-#include "physics/CHapidll.h" 
 #include "physics/CHsystem.h"
 #include "physics/ChBodyEasy.h"
 #include "physics/CHconveyor.h"
 #include "physics/CHbodyAuxRef.h"
 #include "core/ChFileutils.h"
-#include "irrlicht_interface/CHbodySceneNode.h"
-#include "irrlicht_interface/CHbodySceneNodeTools.h" 
-#include "irrlicht_interface/CHirrApp.h"
+#include "UNIT_irrlicht/CHbodySceneNode.h"
+#include "UNIT_irrlicht/CHbodySceneNodeTools.h" 
+#include "UNIT_irrlicht/CHirrApp.h"
 #include "core/ChRealtimeStep.h"
 #include "core/ChMath.h"
 #include "core/ChDistribution.h"
@@ -78,16 +77,16 @@ using namespace std;
 			
 			chrono::ChVector<> V1a(-x_size*0.5, y_size*0.5,0);
 			chrono::ChVector<> V2a( x_size*0.5, y_size*0.5,0);
-			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1a),mpos.TrasformLocalToParent(V2a), mcol, use_Zbuffer);
+			ChIrrTools::drawSegment(driver, mpos.TransformLocalToParent(V1a),mpos.TransformLocalToParent(V2a), mcol, use_Zbuffer);
 			chrono::ChVector<> V1b(-x_size*0.5,-y_size*0.5,0);
 			chrono::ChVector<> V2b( x_size*0.5,-y_size*0.5,0);
-			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1b),mpos.TrasformLocalToParent(V2b), mcol, use_Zbuffer);
+			ChIrrTools::drawSegment(driver, mpos.TransformLocalToParent(V1b),mpos.TransformLocalToParent(V2b), mcol, use_Zbuffer);
 			chrono::ChVector<> V1c( x_size*0.5, y_size*0.5,0);
 			chrono::ChVector<> V2c( x_size*0.5,-y_size*0.5,0);
-			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1c),mpos.TrasformLocalToParent(V2c), mcol, use_Zbuffer);
+			ChIrrTools::drawSegment(driver, mpos.TransformLocalToParent(V1c),mpos.TransformLocalToParent(V2c), mcol, use_Zbuffer);
 			chrono::ChVector<> V1d(-x_size*0.5, y_size*0.5,0);
 			chrono::ChVector<> V2d(-x_size*0.5,-y_size*0.5,0);
-			ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(V1d),mpos.TrasformLocalToParent(V2d), mcol, use_Zbuffer);
+			ChIrrTools::drawSegment(driver, mpos.TransformLocalToParent(V1d),mpos.TransformLocalToParent(V2d), mcol, use_Zbuffer);
 
 			for (int iy = 0; iy < Z.GetColumns(); ++iy)
 			{
@@ -101,13 +100,13 @@ using namespace std;
 					{
 						chrono::ChVector<> Vx1(mx-mxstep, my, Z(ix-1,iy));
 						chrono::ChVector<> Vx2(mx        ,my, Z(ix  ,iy));
-						ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(Vx1),mpos.TrasformLocalToParent(Vx2), mcol, use_Zbuffer);
+						ChIrrTools::drawSegment(driver, mpos.TransformLocalToParent(Vx1),mpos.TransformLocalToParent(Vx2), mcol, use_Zbuffer);
 					}
 					if (iy >0)
 					{
 						chrono::ChVector<> Vy1(mx, my-mystep, Z(ix,iy-1));
 						chrono::ChVector<> Vy2(mx, my       , Z(ix,iy  ));
-						ChIrrTools::drawSegment(driver, mpos.TrasformLocalToParent(Vy1),mpos.TrasformLocalToParent(Vy2), mcol, use_Zbuffer);
+						ChIrrTools::drawSegment(driver, mpos.TransformLocalToParent(Vy1),mpos.TransformLocalToParent(Vy2), mcol, use_Zbuffer);
 					}
 				}
 			}

@@ -35,19 +35,16 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
+	GetLog() << "Executing simulator \n";
 	// If the .exe is launched normally, by default it will parse the settings-file below, 
 	// otherwise the user can launch it by command-line by passing the filename as argument.
 	std::string ces_settings_filename("../CAD_conveyor/settings.ces");
 	if (argc==2) 
 		ces_settings_filename = argv[1];
 
-	// In CHRONO engine, The DLL_CreateGlobals() - DLL_DeleteGlobals(); pair is needed if
-	// global functions are needed. 
-	DLL_CreateGlobals();
 
 	try
 	{
-
 		// Create a simulator object
 		SimulatorCES mysimulator;
 
@@ -65,9 +62,6 @@ int main(int argc, char* argv[])
 	}
 
 
-	// Remember this at the end of the program, if you started
-	// with DLL_CreateGlobals();
-	DLL_DeleteGlobals();
 
 	return 0;
 }
