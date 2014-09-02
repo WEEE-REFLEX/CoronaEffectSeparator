@@ -102,7 +102,7 @@ public:
 				ChVector<> abs_wind(0,0,0);
 
 				// calculate the position of body COG with respect to the drum COG:
-				ChVector<> mrelpos = drum_csys.TrasformParentToLocal(abody->GetPos());
+				ChVector<> mrelpos = drum_csys.TransformParentToLocal(abody->GetPos());
 				double distx=mrelpos.x;
 				double disty=mrelpos.y;
 				ChVector<> velocity=abody->GetPos_dt();

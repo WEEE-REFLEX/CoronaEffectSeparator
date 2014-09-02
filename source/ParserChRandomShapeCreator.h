@@ -96,7 +96,7 @@ public:
 				token = "lenght_factor";
 				if (mval[token].HasMember(token)) {
 					if (!mval.IsObject()) {throw (ChException( "Invalid distribution after '"+std::string(token)+"'"));}
-					mcreator->SetLenghtFactorDistribution( ParserChDistribution::ParseCreate(mval[token]) );
+					mcreator->SetLengthFactorDistribution( ParserChDistribution::ParseCreate(mval[token]) );
 				}
 				token = "density";
 				if (mval[token].HasMember(token)) {
