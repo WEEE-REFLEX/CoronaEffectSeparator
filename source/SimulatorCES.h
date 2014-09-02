@@ -9,15 +9,14 @@
 
 
 
-#include "physics/CHapidll.h" 
 #include "physics/CHsystem.h"
 #include "physics/ChBodyEasy.h"
 #include "physics/CHconveyor.h"
 #include "physics/CHbodyAuxRef.h"
 #include "core/ChFileutils.h"
-#include "irrlicht_interface/CHbodySceneNode.h"
-#include "irrlicht_interface/CHbodySceneNodeTools.h" 
-#include "irrlicht_interface/CHirrApp.h"
+#include "UNIT_irrlicht/CHbodySceneNode.h"
+#include "UNIT_irrlicht/CHbodySceneNodeTools.h" 
+#include "UNIT_irrlicht/CHirrApp.h"
 #include "core/ChRealtimeStep.h"
 #include "core/ChMath.h"
 #include "core/ChDistribution.h"
