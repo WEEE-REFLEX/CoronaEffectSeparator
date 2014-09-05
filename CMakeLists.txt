@@ -54,7 +54,12 @@ ADD_EXECUTABLE(conveyor     	source/conveyor_Ida.cpp
 				source/ParserChRandomShapeCreator.h
 				source/ParserChDistribution.h )
 
+#--------------------------------------------------------------
+#         Avoid logging too many warnings for the Irrlicht unit
 
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	SET(CH_BUILDFLAGS "${CH_BUILDFLAGS} /wd4275")
+ENDIF()
 
 #--------------------------------------------------------------
 #         The following is needed for some platforms
@@ -97,6 +102,8 @@ ADD_CUSTOM_COMMAND(
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_DEBUG}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
+#		"${CH_BINDIR_DEBUG}/ChronoEngine_IRRLICHT.dll"  "${CMAKE_BINARY_DIR}/Debug/"
+#	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_DEBUG}/ChronoEngine_PYPARSER.dll"  "${CMAKE_BINARY_DIR}/Debug/"
 #	COMMAND ${CMAKE_COMMAND} -E copy
 #		"${CH_BINDIR_DEBUG}/ChronoEngine_FEM.dll"  "${CMAKE_BINARY_DIR}/Debug/"
@@ -105,6 +112,8 @@ ADD_CUSTOM_COMMAND(
 		
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_RELEASE}/ChronoEngine.dll"  "${CMAKE_BINARY_DIR}/Release/"
+	COMMAND ${CMAKE_COMMAND} -E copy
+		"${CH_BINDIR_RELEASE}/ChronoEngine_IRRLICHT.dll"  "${CMAKE_BINARY_DIR}/Release/"
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CH_BINDIR_RELEASE}/ChronoEngine_POSTPROCESS.dll"  "${CMAKE_BINARY_DIR}/Release/"
 	COMMAND ${CMAKE_COMMAND} -E copy
