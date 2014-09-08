@@ -1,3 +1,4 @@
+Note about the directory.
 This directory contains files for helping users that want to develop third-party
 projects based on Chrono::Engine.
 
