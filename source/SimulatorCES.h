@@ -357,12 +357,17 @@ public:
 				Cradii.z = sqrt((5./(2.*mbody->GetMass()))*(Ine.x+Ine.y-Ine.z));
 				electric_asset->Cdim         = Cradii*2.; 
 				mbody->AddAsset(electric_asset);
+
+				++particlecounter;
+				mbody->SetIdentifier(particlecounter);
 			}
 			// here put custom data of the callback
 			ChSystem* systemreference;
+			int particlecounter;
 		};
 		MyCreator_plastic* callback_plastic = new MyCreator_plastic;
 		callback_plastic->systemreference = &this->mphysicalSystem;
+		callback_plastic->particlecounter = 0;
 		mcreator_plastic->SetCallbackPostCreation(callback_plastic);
 
 
@@ -1268,7 +1273,8 @@ public:
 									int fraction_identifier = (int)electricproperties->fraction; // id will be 0=box, 1=cylinder, 2=sphere, 3=hull, 4=shavings, etc. (see enum)
 									int material_identifier = (int)electricproperties->material_type; // id will be 0=plastic, 1=metal, 2=others (see enum)
 									// Save on disk some infos...
-									file_for_output << fraction_identifier << ", "
+									file_for_output << abody->GetIdentifier() << ", "
+													<< fraction_identifier << ", "
 													<< abody->GetPos().x << ", "
 													<< abody->GetPos().y << ", "
 													<< abody->GetPos().z << ", "
