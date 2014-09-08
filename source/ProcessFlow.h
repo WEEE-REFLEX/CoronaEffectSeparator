@@ -38,9 +38,9 @@ public:
 			ChSharedPtr<ChParticleEventFlowInRectangle> mrectangleprocessor = mprocessor.DynamicCastTo<ChParticleEventFlowInRectangle>();
 			// compute the row and colum of the matrix
 
-			int irow = floor(mmass_plastic.GetRows() * mrectangleprocessor->last_intersectionUV.x);
+			int irow = (int)floor(mmass_plastic.GetRows() * mrectangleprocessor->last_intersectionUV.x);
 			if (irow >= mmass_plastic.GetRows()) irow = mmass_plastic.GetRows()-1;
-			int icol = floor(mmass_plastic.GetColumns() * mrectangleprocessor->last_intersectionUV.y);
+			int icol = (int)floor(mmass_plastic.GetColumns() * mrectangleprocessor->last_intersectionUV.y);
 			if (icol >= mmass_plastic.GetColumns()) icol = mmass_plastic.GetColumns()-1;
 
 			// Fetch the ElectricParticleProperty asset from the list
