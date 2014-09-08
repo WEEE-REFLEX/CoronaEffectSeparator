@@ -64,7 +64,8 @@ ENDIF()
 #--------------------------------------------------------------
 #         The following is needed for some platforms
 
-SET_TARGET_PROPERTIES(conveyor PROPERTIES 
+SET_TARGET_PROPERTIES(conveyor PROPERTIES
+	COMPILE_FLAGS "${CH_BUILDFLAGS}" 
 	LINK_FLAGS "${CH_LINKERFLAG_EXE}"   )
 
 	
