@@ -188,7 +188,7 @@ public:
 	std::string results_file;
 	double timestep;
 	double Tmax;
-
+	bool splitters_collide;
 
 		///
 		/// Create the SimulatorCES
@@ -269,6 +269,8 @@ public:
 		timestep = 0.001;
 
 		Tmax = 0.1;
+
+		splitters_collide = true;
 
 		// Set small collision envelopes for objects that will be created from now on..
 		ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
@@ -596,6 +598,11 @@ public:
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
 				this->flowmeter_bins = document[token].GetInt();
+			}
+			token = "splitters_collide";
+			if (document.HasMember(token)) {
+				if (!document[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+				this->splitters_collide = document[token].GetBool();
 			}
 			token = "CES_forces";
 			if (document.HasMember(token)) 
@@ -946,6 +953,7 @@ public:
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
 			mrigidBodySplitter1->SetFriction(0.1f); 
+			mrigidBodySplitter1->SetCollide(this->splitters_collide); // deactivate collision?
 		}
 
 		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1").DynamicCastTo<ChBodyAuxRef>();  
@@ -958,6 +966,7 @@ public:
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
 			mrigidBodySplitter2->SetFriction(0.1f); 
+			mrigidBodySplitter2->SetCollide(this->splitters_collide); // deactivate collision?
 		}
 
 		ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1").DynamicCastTo<ChBodyAuxRef>();  
