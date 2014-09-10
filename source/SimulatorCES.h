@@ -154,6 +154,12 @@ public:
 	double xnozzlesize; 
 	double znozzlesize; 
 	
+	double flowmeter_xmin;
+	double flowmeter_xmax;
+	double flowmeter_width;
+	double flowmeter_y;
+	int    flowmeter_bins;
+
 
 	// Coordinate systems with position and rotation of important items in the 
 	// simulator. These are initializad with constant values, but if loading the
@@ -182,7 +188,7 @@ public:
 	std::string results_file;
 	double timestep;
 	double Tmax;
-
+	bool splitters_collide;
 
 		///
 		/// Create the SimulatorCES
@@ -224,6 +230,11 @@ public:
 		znozzlesize = 0.182; //**from CAD, nozzle z width
 		xnozzlesize = 0.1; //**from CAD, nozzle x width
 
+		flowmeter_xmin   = 0.28;
+		flowmeter_xmax   = flowmeter_xmin+0.3;
+		flowmeter_y      = -0.1;
+		flowmeter_width  = 0.2;
+		flowmeter_bins   = 25;
 
 		// Init coordinate systems with position and rotation of important items in the 
 		// simulator. These are initializad with constant values, but if loading the
@@ -258,6 +269,8 @@ public:
 		timestep = 0.001;
 
 		Tmax = 0.1;
+
+		splitters_collide = true;
 
 		// Set small collision envelopes for objects that will be created from now on..
 		ChCollisionModel::SetDefaultSuggestedEnvelope(0.001);  //0.002
@@ -560,6 +573,36 @@ public:
 			if (document.HasMember(token)) {
 				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
 				mphysicalSystem.SetMinBounceSpeed( document[token].GetDouble() );
+			}
+			token = "flowmeter_xmin";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->flowmeter_xmin = document[token].GetDouble();
+			}
+			token = "flowmeter_xmax";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->flowmeter_xmax = document[token].GetDouble();
+			}
+			token = "flowmeter_y";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->flowmeter_y = document[token].GetDouble();
+			}
+			token = "flowmeter_width";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->flowmeter_width = document[token].GetDouble();
+			}
+			token = "flowmeter_bins";
+			if (document.HasMember(token)) {
+				if (!document[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+				this->flowmeter_bins = document[token].GetInt();
+			}
+			token = "splitters_collide";
+			if (document.HasMember(token)) {
+				if (!document[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+				this->splitters_collide = document[token].GetBool();
 			}
 			token = "CES_forces";
 			if (document.HasMember(token)) 
@@ -910,6 +953,7 @@ public:
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
 			mrigidBodySplitter1->SetFriction(0.1f); 
+			mrigidBodySplitter1->SetCollide(this->splitters_collide); // deactivate collision?
 		}
 
 		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1").DynamicCastTo<ChBodyAuxRef>();  
@@ -922,6 +966,7 @@ public:
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
 			mrigidBodySplitter2->SetFriction(0.1f); 
+			mrigidBodySplitter2->SetCollide(this->splitters_collide); // deactivate collision?
 		}
 
 		ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1").DynamicCastTo<ChBodyAuxRef>();  
@@ -1130,14 +1175,17 @@ public:
 		// Create also a ChParticleProcessor configured as a
 		// counter of particles that flow into a rectangle with a statistical distribution to plot:
 		//  -create the trigger:
-		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle (new ChParticleEventFlowInRectangle(0.20,0.30));
+		double flowmeter_length = this->flowmeter_xmax-this->flowmeter_xmin;
+		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle (new ChParticleEventFlowInRectangle(flowmeter_length,flowmeter_width));
 		distrrectangle->rectangle_csys = ChCoordsys<>( 
-			drum_csys.pos + ChVector<>(0.32*0.5+0.20*0.5-0.04,-0.10,0), // position of center rectangle: a bit below drum axis
+			drum_csys.pos + ChVector<>(this->flowmeter_xmin+0.5*flowmeter_length,
+									   this->flowmeter_y, 
+									   0), // position of center rectangle
 			Q_from_AngAxis(-CH_C_PI_2,VECT_X) ); // rotate rectangle so that its Z is up
 		distrrectangle->margin = 0.05;
 		//  -create the counter, with 20x10 resolution of sampling, on x y
 		//    This is defined in ProcessFlow.h and distinguishes plastic from metal
-		ChSharedPtr<ProcessFlow> countdistribution (new ProcessFlow(20,1));
+		ChSharedPtr<ProcessFlow> countdistribution (new ProcessFlow(this->flowmeter_bins,1));
 		//  -create the processor and plug in the trigger and the counter:
 		ChParticleProcessor processor_distribution;
 		processor_distribution.SetEventTrigger(distrrectangle);

@@ -19,6 +19,41 @@ from numpy import *
 from matplotlib import *
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import Axes3D
+import json
+
+
+
+
+# CONFIGURATION SETTINGS.
+#   Change to your needs!
+
+# A) Paths.
+# Note that the path of the executable, also the working directory
+# of the executable, must terminate with / slash. Also note that
+# Unix-like slashes are used in paths, instead of win backslashes \
+#
+# For example:
+#
+# directory  = "C:/tasora/code/chrono_build/bin/Release/"
+# executable = "demo_emitter.exe"
+# template   = "template.ces"
+
+directory  = "C:/Users/tasora/Desktop/build_CES/Release/"
+#directory  = "C:/WeeReflex build/Corona_build/Release/"
+executable = "conveyor.exe"
+template   = "template.ces"
+argument   =  "__run__.ces"
+
+# B) define parameters.
+# These are the placeholders that must be used in the
+# 'template.ces' file, put them where you expect numbers.
+# This python procedure will replace them with the corresponding
+# parameter value from the input parameters array.
+param_keys = [  "PARAMETER_U",
+                "PARAMETER_DRUM_RPM",
+                "PARAMETER_PARTICLES_PER_SECOND" ]
+
+
 
 
 
@@ -37,34 +72,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def RunChronoSimulation(parameters):
 
-    # - 1 -
-    # Configuration settings. Change to your needs!
-
-    # Paths.
-    # Note that the path of the executable, also the working directory
-    # of the executable, must terminate with / slash. Also note that
-    # Unix-like slashes are used in paths, instead of win backslashes \
-    #
-    # For example:
-    #
-    # directory  = "C:/tasora/code/chrono_build/bin/Release/"
-    # executable = "demo_emitter.exe"
-    # argument   = ""
-
-    directory  = "C:/WeeReflex build/Corona_build/Release/"
-    executable = "conveyor.exe"
-    template   = "template.ces"
-    argument   =  directory+"__run__.ces"
-    resultfile =  directory+"results.dat"
-
-    # Parameters.
-    # These are the placeholders that must be used in the
-    # 'template.ces' file, put them where you expect numbers.
-    # This python procedure will replace them with the corresponding
-    # parameter value from the input parameters array.
-    param_keys = [  "PARAMETER_U",
-                    "PARAMETER_DRUM_RPM",
-                    "PARAMETER_PARTICLES_PER_SECOND" ]
+    # -1-
 
     # -2-
     # Perform the automatic generation of the .ces settings file,
@@ -73,7 +81,7 @@ def RunChronoSimulation(parameters):
     if (not os.path.isfile(directory+template)):
         raise Exception("The CES setting file: "+directory+template+" is not existing!")
 
-    new_file = open(argument,'w')
+    new_file = open(directory+argument,'w')
     old_file = open(directory+template)
     ik = 0
     for line in old_file:
@@ -92,14 +100,14 @@ def RunChronoSimulation(parameters):
 
     print("- Start C::E process...")
 
-    myprocess = subprocess.Popen([directory+executable, argument],
+    myprocess = subprocess.Popen([directory+executable, directory+argument],
                 -1,
                 None,
                 None,
-                subprocess.PIPE,
-                subprocess.PIPE,
+                None, # subprocess.PIPE,
+                None, # subprocess.PIPE,
                 None,
-                subprocess._PLATFORM_DEFAULT_CLOSE_FDS,
+                False, # subprocess._PLATFORM_DEFAULT_CLOSE_FDS,
                 False,
                 directory)
 
@@ -117,18 +125,13 @@ def RunChronoSimulation(parameters):
 
 
     # - 4 -
-    # Load result output .dat file from Chrono::Engine and
-    # fill the "myresult" array with the values of .dat file
-
-    # Initialize the result array as zeros only
-    myresult=zeros(15)
-
-    # load the output result file (assuming it is in CSV format)
-    resultdata = genfromtxt(resultfile, delimiter=",")
+    # load the output result files (assuming in CSV format)
+    resultdata_metal   = genfromtxt(directory+"out_distribution_metal.txt", delimiter=",")
+    resultdata_plastic = genfromtxt(directory+"out_distribution_plastic.txt", delimiter=",")
 
     # process data to find useful results, store those results
     # in the 'myresult' array: (ex. do more sphisticated processing here)
-    myresult = resultdata
+    myresult = [resultdata_metal,resultdata_plastic]
 
 
     # - 5 -
@@ -143,17 +146,60 @@ def RunChronoSimulation(parameters):
 
 myparameters=array([    31000,  # voltage
                         45.8,   # drum rpm
-                        5000   # particles per second
-                    ])
-
-myresults = RunChronoSimulation(c)
-
-myparameters=array([    31000,  # voltage
-                        45.8,   # drum rpm
-                        300   # particles per second
+                        500   # particles per second
                     ])
 
 myresults = RunChronoSimulation(myparameters)
 
-print (myresults)
+
+# Now, myresults[0] contains the output metal distribution
+# and myresults[1] contains the output plastic distribution
+# You can do what you like with them (ex compute recovery ratio etc.)
+#
+# ... BLA BLA
+#
+# or you can also save in a larger matrix, or in a xcel file etc.
+
+
+# Optionally show result distributions as python arrays
+# printed in console:
+if True:
+    print ("Output: Metal   distribution, not normalized")
+    print (myresults[0])
+    print ("Output: Plastic distribution, not normalized")
+    print (myresults[1])
+
+# Optionally show result normalized distributions as plot.
+# Set to True or False to activate/deactivate it.
+# Note that here the program HALTS until you close the plotting window!
+if True:
+    # 1- find the rectangle flow processor size from the __run__.ces:
+    with open(directory+argument) as json_data:
+        parsed_json_data = json.load(json_data)
+    flowmeter_xmin =  parsed_json_data["flowmeter_xmin"]
+    flowmeter_xmax =  parsed_json_data["flowmeter_xmax"]
+    flowmeter_bins =  parsed_json_data["flowmeter_bins"]
+    flowmeter_length = flowmeter_xmax - flowmeter_xmin
+    binwidth = flowmeter_length/flowmeter_bins
+    # 2- normalize curves integral
+    if (myresults[0].sum()):
+        my_metal = myresults[0]/ (myresults[0].sum() )
+    else:
+        my_metal = myresults[0] # in case no metal at all avoid division by 0
+    if (myresults[1].sum()):
+        my_plast = myresults[1]/ (myresults[1].sum() )
+    else:
+        my_plast = myresults[1] # in case no plastic at all avoid division by 0
+
+    # plot the data
+    mx = arange(flowmeter_xmin, flowmeter_xmax, binwidth)
+    bar(mx, my_metal,  color="r", label="metal", alpha=0.5, width=binwidth)
+    bar(mx, my_plast,  color="b", label="plastic", alpha=0.5, width=binwidth)
+    xlabel('x [m]')
+    ylabel('pdf')
+    title('Mass distribution')
+    xlim([flowmeter_xmin,flowmeter_xmax])
+    grid(True)
+    legend()
+    show()
 
