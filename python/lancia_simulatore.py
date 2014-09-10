@@ -19,6 +19,41 @@ from numpy import *
 from matplotlib import *
 from matplotlib.pyplot import *
 from mpl_toolkits.mplot3d import Axes3D
+import json
+
+
+
+
+# CONFIGURATION SETTINGS.
+#   Change to your needs!
+
+# A) Paths.
+# Note that the path of the executable, also the working directory
+# of the executable, must terminate with / slash. Also note that
+# Unix-like slashes are used in paths, instead of win backslashes \
+#
+# For example:
+#
+# directory  = "C:/tasora/code/chrono_build/bin/Release/"
+# executable = "demo_emitter.exe"
+# template   = "template.ces"
+
+directory  = "C:/Users/tasora/Desktop/build_CES/Release/"
+#directory  = "C:/WeeReflex build/Corona_build/Release/"
+executable = "conveyor.exe"
+template   = "template.ces"
+argument   =  "__run__.ces"
+
+# B) define parameters.
+# These are the placeholders that must be used in the
+# 'template.ces' file, put them where you expect numbers.
+# This python procedure will replace them with the corresponding
+# parameter value from the input parameters array.
+param_keys = [  "PARAMETER_U",
+                "PARAMETER_DRUM_RPM",
+                "PARAMETER_PARTICLES_PER_SECOND" ]
+
+
 
 
 
@@ -37,34 +72,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def RunChronoSimulation(parameters):
 
-    # - 1 -
-    # Configuration settings. Change to your needs!
-
-    # Paths.
-    # Note that the path of the executable, also the working directory
-    # of the executable, must terminate with / slash. Also note that
-    # Unix-like slashes are used in paths, instead of win backslashes \
-    #
-    # For example:
-    #
-    # directory  = "C:/tasora/code/chrono_build/bin/Release/"
-    # executable = "demo_emitter.exe"
-    # argument   = ""
-
-    directory  = "C:/Users/tasora/Desktop/build_CES/Release/"
-    executable = "conveyor.exe"
-    template   = "template.ces"
-    argument   =  directory+"__run__.ces"
-    resultfile =  directory+"results.dat"
-
-    # Parameters.
-    # These are the placeholders that must be used in the
-    # 'template.ces' file, put them where you expect numbers.
-    # This python procedure will replace them with the corresponding
-    # parameter value from the input parameters array.
-    param_keys = [  "PARAMETER_U",
-                    "PARAMETER_DRUM_RPM",
-                    "PARAMETER_PARTICLES_PER_SECOND" ]
+    # -1-
 
     # -2-
     # Perform the automatic generation of the .ces settings file,
@@ -73,7 +81,7 @@ def RunChronoSimulation(parameters):
     if (not os.path.isfile(directory+template)):
         raise Exception("The CES setting file: "+directory+template+" is not existing!")
 
-    new_file = open(argument,'w')
+    new_file = open(directory+argument,'w')
     old_file = open(directory+template)
     ik = 0
     for line in old_file:
@@ -92,14 +100,14 @@ def RunChronoSimulation(parameters):
 
     print("- Start C::E process...")
 
-    myprocess = subprocess.Popen([directory+executable, argument],
+    myprocess = subprocess.Popen([directory+executable, directory+argument],
                 -1,
                 None,
                 None,
-                subprocess.PIPE,
-                subprocess.PIPE,
+                None, # subprocess.PIPE,
+                None, # subprocess.PIPE,
                 None,
-                subprocess._PLATFORM_DEFAULT_CLOSE_FDS,
+                False, # subprocess._PLATFORM_DEFAULT_CLOSE_FDS,
                 False,
                 directory)
 
@@ -117,18 +125,13 @@ def RunChronoSimulation(parameters):
 
 
     # - 4 -
-    # Load result output .dat file from Chrono::Engine and
-    # fill the "myresult" array with the values of .dat file
-
-    # Initialize the result array as zeros only
-    myresult=zeros(15)
-
-    # load the output result file (assuming it is in CSV format)
-    resultdata = genfromtxt(resultfile, delimiter=",")
+    # load the output result files (assuming in CSV format)
+    resultdata_metal   = genfromtxt(directory+"out_distribution_metal.txt", delimiter=",")
+    resultdata_plastic = genfromtxt(directory+"out_distribution_plastic.txt", delimiter=",")
 
     # process data to find useful results, store those results
     # in the 'myresult' array: (ex. do more sphisticated processing here)
-    myresult = resultdata
+    myresult = [resultdata_metal,resultdata_plastic]
 
 
     # - 5 -
