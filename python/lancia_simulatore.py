@@ -151,5 +151,55 @@ myparameters=array([    31000,  # voltage
 
 myresults = RunChronoSimulation(myparameters)
 
-print (myresults)
+
+# Now, myresults[0] contains the output metal distribution
+# and myresults[1] contains the output plastic distribution
+# You can do what you like with them (ex compute recovery ratio etc.)
+#
+# ... BLA BLA
+#
+# or you can also save in a larger matrix, or in a xcel file etc.
+
+
+# Optionally show result distributions as python arrays
+# printed in console:
+if True:
+    print ("Output: Metal   distribution, not normalized")
+    print (myresults[0])
+    print ("Output: Plastic distribution, not normalized")
+    print (myresults[1])
+
+# Optionally show result normalized distributions as plot.
+# Set to True or False to activate/deactivate it.
+# Note that here the program HALTS until you close the plotting window!
+if True:
+    # 1- find the rectangle flow processor size from the __run__.ces:
+    with open(directory+argument) as json_data:
+        parsed_json_data = json.load(json_data)
+    flowmeter_xmin =  parsed_json_data["flowmeter_xmin"]
+    flowmeter_xmax =  parsed_json_data["flowmeter_xmax"]
+    flowmeter_bins =  parsed_json_data["flowmeter_bins"]
+    flowmeter_length = flowmeter_xmax - flowmeter_xmin
+    binwidth = flowmeter_length/flowmeter_bins
+    # 2- normalize curves integral
+    if (myresults[0].sum()):
+        my_metal = myresults[0]/ (myresults[0].sum() )
+    else:
+        my_metal = myresults[0] # in case no metal at all avoid division by 0
+    if (myresults[1].sum()):
+        my_plast = myresults[1]/ (myresults[1].sum() )
+    else:
+        my_plast = myresults[1] # in case no plastic at all avoid division by 0
+
+    # plot the data
+    mx = arange(flowmeter_xmin, flowmeter_xmax, binwidth)
+    bar(mx, my_metal,  color="r", label="metal", alpha=0.5, width=binwidth)
+    bar(mx, my_plast,  color="b", label="plastic", alpha=0.5, width=binwidth)
+    xlabel('x [m]')
+    ylabel('pdf')
+    title('Mass distribution')
+    xlim([flowmeter_xmin,flowmeter_xmax])
+    grid(True)
+    legend()
+    show()
 
