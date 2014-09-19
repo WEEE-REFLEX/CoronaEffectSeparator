@@ -1031,7 +1031,7 @@ public:
 			mengine->Initialize(mdrum, mtruss, drum_csys);
 
 			mengine->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
-			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
+			if (ChSharedPtr<ChFunction_Const> mfun = (mengine->Get_spe_funct().DynamicCastTo<ChFunction_Const>()))
 				mfun->Set_yconst(-drumspeed_radss);  // angular speed in [rad/s]
 
 			// Finally, do not forget to add the body to the system:
@@ -1049,7 +1049,7 @@ public:
 			mengine2->Initialize(mSpazzola, mtruss2, Spazzola_csys);
 
 			mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
-			if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine2->Get_spe_funct()))
+			if (ChSharedPtr<ChFunction_Const> mfun = (mengine2->Get_spe_funct().DynamicCastTo<ChFunction_Const>() ))
 				mfun->Set_yconst(-drumspeed_radss); // angular speed in [rad/s]
 
 			// Finally, do not forget to add the body to the system:
@@ -1261,6 +1261,10 @@ public:
 				// Continuosly create debris that fall on the conveyor belt
 				this->emitter.EmitParticles(mphysicalSystem, application.GetTimestep()); //***TEST***
 
+				GetLog() << "Total mass=" << this->emitter.GetTotCreatedMass() << "   "
+					<< "Total n.part=" << this->emitter.GetTotCreatedParticles() << "   "
+					<< "Average kg/s=" << this->emitter.GetTotCreatedMass()/application.GetSystem()->GetChTime() << "\n";
+
 
 				// Limit the max age (in seconds) of debris particles on the scene, 
 				// deleting the oldest ones, for performance
@@ -1276,7 +1280,7 @@ public:
 
 				// Maybe the user played with the slider and changed the speed of drum...
 				if (!mengine.IsNull())
-				  if (ChFunction_Const* mfun = dynamic_cast<ChFunction_Const*>(mengine->Get_spe_funct()))
+					if (ChSharedPtr<ChFunction_Const> mfun = (mengine->Get_spe_funct().DynamicCastTo<ChFunction_Const>() ))
 					mfun->Set_yconst(-drumspeed_radss);  // angular speed in [rad/s]
 
 				// update the assets containing the trajectories, if any

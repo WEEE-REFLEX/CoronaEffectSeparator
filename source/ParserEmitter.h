@@ -38,20 +38,50 @@ public:
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
 			(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletWidth() = mval[token].GetDouble();
 		}
+		token = "flow_control_mode";
+		if (mval.HasMember(token)) {
+			if (!mval[token].IsString()) {throw (ChException( "Invalid string after '"+std::string(token)+"'"));}
+			char buffer [200];
+			strncpy(buffer, mval[token].GetString(), mval[token].GetStringLength());
+			buffer[mval[token].GetStringLength()]=0;
+			if (strcmp(buffer,"FLOW_PARTICLESPERSECOND")==0)
+			{
+				emitter.SetFlowControlMode(ChParticleEmitter::FLOW_PARTICLESPERSECOND);
+			}
+			if (strcmp(buffer,"FLOW_MASSPERSECOND")==0)
+			{
+				emitter.SetFlowControlMode(ChParticleEmitter::FLOW_MASSPERSECOND);
+			}
+		}
 		token = "particles_per_second";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
 			emitter.ParticlesPerSecond() = mval[token].GetDouble();
+		}
+		token = "mass_per_second";
+		if (mval.HasMember(token)) {
+			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+			emitter.MassPerSecond() = mval[token].GetDouble();
 		}
 		token = "use_particle_reservoir";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
 			emitter.SetUseParticleReservoir( mval[token].GetBool() );
 		}
+		token = "use_mass_reservoir";
+		if (mval.HasMember(token)) {
+			if (!mval[token].IsBool()) {throw (ChException( "Invalid true/false flag after '"+std::string(token)+"'"));}
+			emitter.SetUseMassReservoir( mval[token].GetBool() );
+		}
 		token = "particle_reservoir";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsInt()) {throw (ChException( "Invalid integer after '"+std::string(token)+"'"));}
 			emitter.ParticleReservoirAmount() = mval[token].GetInt();
+		}
+		token = "mass_reservoir";
+		if (mval.HasMember(token)) {
+			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
+			emitter.MassReservoirAmount() = mval[token].GetDouble();
 		}
 		token = "particle_creator";
 		if (mval.HasMember(token)) 
