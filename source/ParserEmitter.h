@@ -44,14 +44,16 @@ public:
 			char buffer [200];
 			strncpy(buffer, mval[token].GetString(), mval[token].GetStringLength());
 			buffer[mval[token].GetStringLength()]=0;
-			if (strcmp(buffer,"FLOW_PARTICLESPERSECOND")==0)
-			{
+			bool enum_parsed = false;
+			if (strcmp(buffer,"FLOW_PARTICLESPERSECOND")==0) {
+				enum_parsed = true;
 				emitter.SetFlowControlMode(ChParticleEmitter::FLOW_PARTICLESPERSECOND);
 			}
-			if (strcmp(buffer,"FLOW_MASSPERSECOND")==0)
-			{
+			if (strcmp(buffer,"FLOW_MASSPERSECOND")==0) {
+				enum_parsed = true;
 				emitter.SetFlowControlMode(ChParticleEmitter::FLOW_MASSPERSECOND);
 			}
+			if (!enum_parsed) {throw (ChException( "Invalid flow control type after '"+std::string(token)+"', use FLOW_PARTICLESPERSECOND or FLOW_MASSPERSECOND"));}
 		}
 		token = "particles_per_second";
 		if (mval.HasMember(token)) {
