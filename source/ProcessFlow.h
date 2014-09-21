@@ -21,7 +21,7 @@ namespace particlefactory {
 class ProcessFlow : public ChParticleProcessEvent
 {
 public:
-	ProcessFlow(int u_sects = 10, int v_sects = 10)
+	ProcessFlow(int u_sects = 100, int v_sects = 100)
 	{
 		mmass_plastic.Reset(u_sects, v_sects);
 		mmass_metal.Reset(u_sects, v_sects);
