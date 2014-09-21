@@ -183,6 +183,24 @@ public:
 				ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreator(new ChRandomShapeCreatorFromFamilies);
 				parsed_creator = mcreator;
 
+				char* protoken = "probability_mode";
+				if (mval.HasMember(protoken)) {
+					if (!mval[protoken].IsString()) {throw (ChException( "Invalid string after '"+std::string(protoken)+"'"));}
+					char buffer[200];
+					strncpy(buffer, mval[protoken].GetString(), mval[protoken].GetStringLength());
+					buffer[mval[protoken].GetStringLength()] = 0;
+					bool enum_parsed = false;
+					if (strcmp(buffer, "PARTICLE_PROBABILITY")==0) {
+						mcreator->SetProbabilityMode(ChRandomShapeCreatorFromFamilies::PARTICLE_PROBABILITY);
+						enum_parsed = true;
+					}
+					if (strcmp(buffer, "MASS_PROBABILITY")==0) {
+						mcreator->SetProbabilityMode(ChRandomShapeCreatorFromFamilies::MASS_PROBABILITY);
+						enum_parsed = true;
+					}
+					if (!enum_parsed) {throw (ChException( "Invalid probability type after '"+std::string(protoken)+"', use PARTICLE_PROBABILITY or MASS_PROBABILITY"));}
+				}
+
 				char* famtoken = "families";
 				if (mval.HasMember(famtoken)) {
 					if (!mval[famtoken].IsArray()) {throw (ChException( "Invalid array after '"+std::string(token)+"'"));}
