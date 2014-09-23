@@ -322,7 +322,7 @@ public:
 				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
 				electric_asset->fraction	  = ElectricParticleProperty::e_fraction_sphere;
 				electric_asset->material_type = ElectricParticleProperty::e_mat_metal;
-				electric_asset->conductivity  = 6428000;
+				electric_asset->conductivity  = 58000000;
 				electric_asset->birthdate	  = this->systemreference->GetChTime();
 				ChVector<> Cradii; // use equivalent-inertia ellipsoid to get characteristic size:
 				ChVector<> Ine = mbody->GetInertiaXX();
