@@ -38,8 +38,8 @@ import json
 # executable = "demo_emitter.exe"
 # template   = "template.ces"
 
-directory  = "C:/Users/tasora/Desktop/build_CES/Release/"
-#directory  = "C:/WeeReflex build/Corona_build/Release/"
+#directory  = "C:/Users/tasora/Desktop/build_CES/Release/"
+directory  = "C:/WeeReflex build/Corona_build/Release/"
 executable = "conveyor.exe"
 template   = "template.ces"
 argument   =  "__run__.ces"
@@ -51,7 +51,7 @@ argument   =  "__run__.ces"
 # parameter value from the input parameters array.
 param_keys = [  "PARAMETER_U",
                 "PARAMETER_DRUM_RPM",
-                "PARAMETER_PARTICLES_PER_SECOND" ]
+                "PARAMETER_MASS_PER_SECOND" ]
 
 
 
@@ -144,26 +144,55 @@ def RunChronoSimulation(parameters):
 # EXAMPLE OF USE OF THE FUNCTION
 #
 
-myparameters=array([    31000,  # voltage
-                        45.8,   # drum rpm
-                        500   # particles per second
-                    ])
+#myparameters=array([    31000,  # voltage
+                        #45.8,   # drum rpm
+                        #500   # particles per second
+                    #])
 
-myresults = RunChronoSimulation(myparameters)
+#myresults = RunChronoSimulation(myparameters)
 
+k = 0
 
-# Now, myresults[0] contains the output metal distribution
-# and myresults[1] contains the output plastic distribution
-# You can do what you like with them (ex compute recovery ratio etc.)
-#
-# ... BLA BLA
-#
-# or you can also save in a larger matrix, or in a xcel file etc.
+DOE = array([[-32970, 63.2, 30.16/3600],
+             [-26970, 87.01, 91.63/3600],
+             [-29580, 127.42, 21.07/3600],
+             [-31970, 67.52,  98.2/3600],
+             [-28990, 46.88, 52.75/3600],
+             [-26390, 104.77, 70.3/3600],
+             [-30750, 121.38, 59.77/3600],
+             [-30500, 49.28, 15.76/3600],
+             [-34460, 72.03, 65.71/3600],
+             [-33051, 117.25, 38.89/3600],
+             [-27430, 77.12, 46.72/3600],
+             [-28310, 40.93, 88.21/3600],
+             [-34120, 100.64, 80.29/3600],
+             [-25080, 109.86, 25.3/3600],
+             [-32380, 35.07, 62.02/3600],
+             [-25620, 56, 43.66/3600],
+             [-28670, 83.55, 14.23/3600],
+             [-31530, 91.9, 76.24/3600]])
 
+for setting in DOE :
 
-# Optionally show result distributions as python arrays
-# printed in console:
-if True:
+    myparameters = setting
+    myresults = RunChronoSimulation(myparameters)
+    k = k+1
+
+    savetxt(directory + "sim_out/" + "inputs_" + str(k) + ".txt", myparameters)
+    savetxt(directory + "sim_out/" + "distribution_metal_" + str(k) + ".txt", myresults[0])
+    savetxt(directory + "sim_out/" + "distribution_plastic_" + str(k) + ".txt",  myresults[1])
+
+		# Now, myresults[0] contains the output metal distribution
+		# and myresults[1] contains the output plastic distribution
+		# You can do what you like with them (ex compute recovery ratio etc.)
+		#
+		# ... BLA BLA
+		#
+		# or you can also save in a larger matrix, or in a xcel file etc.
+
+    # Optionally show result distributions as python arrays
+    # printed in console:
+if False:
     print ("Output: Metal   distribution, not normalized")
     print (myresults[0])
     print ("Output: Plastic distribution, not normalized")
@@ -172,7 +201,7 @@ if True:
 # Optionally show result normalized distributions as plot.
 # Set to True or False to activate/deactivate it.
 # Note that here the program HALTS until you close the plotting window!
-if True:
+if False:
     # 1- find the rectangle flow processor size from the __run__.ces:
     with open(directory+argument) as json_data:
         parsed_json_data = json.load(json_data)
