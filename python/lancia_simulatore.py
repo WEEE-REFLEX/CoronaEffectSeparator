@@ -143,31 +143,35 @@ def RunChronoSimulation(parameters):
 #
 # EXAMPLE OF USE OF THE FUNCTION
 #
+for k in range(1,6):
 
-myparameters=array([    31000,  # voltage
-                        45.8,   # drum rpm
-                        500   # particles per second
-                    ])
+    myparameters=array([    31000,  # voltage
+                            45.8,   # drum rpm
+                            k*100   # particles per second
+                        ])
 
-myresults = RunChronoSimulation(myparameters)
+    myresults = RunChronoSimulation(myparameters)
+
+    savetxt(directory + "ida_inputs_" + str(k) + ".txt" , myparameters)
+    savetxt(directory + "ida_outputs_" + str(k) + ".txt" , myresults)
+
+    # Now, myresults[0] contains the output metal distribution
+    # and myresults[1] contains the output plastic distribution
+    # You can do what you like with them (ex compute recovery ratio etc.)
+    #
+    # ... BLA BLA
+    #
+    # or you can also save in a larger matrix, or in a xcel file etc.
 
 
-# Now, myresults[0] contains the output metal distribution
-# and myresults[1] contains the output plastic distribution
-# You can do what you like with them (ex compute recovery ratio etc.)
-#
-# ... BLA BLA
-#
-# or you can also save in a larger matrix, or in a xcel file etc.
+    # Optionally show result distributions as python arrays
+    # printed in console:
+    if True:
+        print ("Output: Metal   distribution, not normalized")
+        print (myresults[0])
+        print ("Output: Plastic distribution, not normalized")
+        print (myresults[1])
 
-
-# Optionally show result distributions as python arrays
-# printed in console:
-if True:
-    print ("Output: Metal   distribution, not normalized")
-    print (myresults[0])
-    print ("Output: Plastic distribution, not normalized")
-    print (myresults[1])
 
 # Optionally show result normalized distributions as plot.
 # Set to True or False to activate/deactivate it.
