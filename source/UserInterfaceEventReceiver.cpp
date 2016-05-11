@@ -11,7 +11,7 @@ using namespace scene;
 using namespace video;
 using namespace io; 
 using namespace gui;
-
+using namespace chrono::irrlicht;
 
 
 UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp, SimulatorCES* mysimulator)

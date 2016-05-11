@@ -47,6 +47,7 @@ using namespace chrono;
 using namespace chrono::postprocess;
 using namespace chrono::collision;
 using namespace chrono::particlefactory;
+using namespace chrono::irrlicht;
 
 // Use the main namespaces of Irrlicht
 using namespace irr;
