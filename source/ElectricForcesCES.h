@@ -69,22 +69,22 @@ public:
 			// Loop on all bodies:
 		for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
 		{
-			ChBody* abody = (*msystem->Get_bodylist())[i];
+			auto abody = (*msystem->Get_bodylist())[i];
 
 			bool was_a_particle = false;
-			ChSharedPtr<ElectricParticleProperty> electricproperties; // null by default
+			std::shared_ptr<ElectricParticleProperty> electricproperties; // null by default
 
 			// Fetch the ElectricParticleProperty asset from the list of 
 			// assets that have been attached to the object, and retrieve the
 			// custom data that have been stored. ***ALEX
 			for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 			{
-				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-				if (myasset.IsType<ElectricParticleProperty>())
+				std::shared_ptr<ChAsset> myasset = abody->GetAssetN(na);
+				if (auto myassetelectric = std::dynamic_pointer_cast<ElectricParticleProperty>(myasset))
 				{
 					// OK! THIS WAS A PARTICLE! ***ALEX
 					was_a_particle = true;		
-					electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
+					electricproperties = myassetelectric;
 				} 
 			}
 

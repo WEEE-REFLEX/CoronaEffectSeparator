@@ -18,11 +18,11 @@ class ParserChDistribution
 public:
 	
 		/// Just a simple static function here, call as ParserChRandomShapeGenerator::Parse(...)
-	static ChSmartPtr<ChDistribution> ParseCreate (rapidjson::Value& mval)
+	static std::shared_ptr<ChDistribution> ParseCreate (rapidjson::Value& mval)
 	{
 		if (!mval.IsObject()) {throw (ChException( "Invalid distribution object."));}
 
-		ChSmartPtr<ChDistribution> createddistr;
+		std::shared_ptr<ChDistribution> createddistr;
 
 		char* token;
 
@@ -44,7 +44,7 @@ public:
 				}
 
 				// Create the distribution!
-				ChSmartPtr<ChConstantDistribution> mdistr(new ChConstantDistribution(value));
+				std::shared_ptr<ChConstantDistribution> mdistr(new ChConstantDistribution(value));
 				createddistr = mdistr;
 			}
 
@@ -65,7 +65,7 @@ public:
 				}
 
 				// Create the distribution!
-				ChSmartPtr<ChMinMaxDistribution> mdistr(new ChMinMaxDistribution(mmin,mmax));
+				std::shared_ptr<ChMinMaxDistribution> mdistr(new ChMinMaxDistribution(mmin,mmax));
 				createddistr = mdistr;
 			}
 
@@ -86,7 +86,7 @@ public:
 				}
 
 				// Create the distribution!
-				ChSmartPtr<ChNormalDistribution> mdistr(new ChNormalDistribution(variance,mean));
+				std::shared_ptr<ChNormalDistribution> mdistr(new ChNormalDistribution(variance,mean));
 				createddistr = mdistr;
 			}
 
@@ -108,7 +108,7 @@ public:
 				}
 
 				// Create the distribution!
-				ChSmartPtr<ChWeibullDistribution> mdistr(new ChWeibullDistribution(lambda,k));
+				std::shared_ptr<ChWeibullDistribution> mdistr(new ChWeibullDistribution(lambda,k));
 				createddistr = mdistr;
 			}
 
@@ -130,7 +130,7 @@ public:
 				}
 
 				// Create the distribution!
-				ChSmartPtr<ChZhangDistribution> mdistr(new ChZhangDistribution(average,mmin));
+				std::shared_ptr<ChZhangDistribution> mdistr(new ChZhangDistribution(average,mmin));
 				createddistr = mdistr;
 			}
 
@@ -172,7 +172,7 @@ public:
 					mmx(0,i)=mx[i];
 					mmy(0,i)=my[i];
 				}
-				ChSmartPtr<ChContinuumDistribution> mdistr(new ChContinuumDistribution(mmx,mmy));
+				std::shared_ptr<ChContinuumDistribution> mdistr(new ChContinuumDistribution(mmx,mmy));
 				createddistr = mdistr;
 			}
 
@@ -213,7 +213,7 @@ public:
 					mmx(0,i)=mx[i];
 					mmy(0,i)=my[i];
 				}
-				ChSmartPtr<ChDiscreteDistribution> mdistr(new ChDiscreteDistribution(mmx,mmy));
+				std::shared_ptr<ChDiscreteDistribution> mdistr(new ChDiscreteDistribution(mmx,mmy));
 				createddistr = mdistr;
 			}
 
@@ -222,7 +222,7 @@ public:
 
 
 		}
-		if (createddistr.IsNull()) {throw (ChException( "Cannot create the specified distribution (unknown 'type': ...? )"));}
+		if (!createddistr) {throw (ChException( "Cannot create the specified distribution (unknown 'type': ...? )"));}
 
 		return createddistr;
 	}

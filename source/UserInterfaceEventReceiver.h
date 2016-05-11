@@ -17,12 +17,12 @@ class UserInterfaceEventReceiver : public irr::IEventReceiver
 {
 public:
 
-	UserInterfaceEventReceiver(irr::ChIrrAppInterface* myapp, SimulatorCES* mysimulator);
+	UserInterfaceEventReceiver(chrono::irrlicht::ChIrrAppInterface* myapp, SimulatorCES* mysimulator);
 
 	bool OnEvent(const irr::SEvent& event);
 
 private: 
-	irr::ChIrrAppInterface* application;
+	chrono::irrlicht::ChIrrAppInterface* application;
 	SimulatorCES* simulator;
 
 public:

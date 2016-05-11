@@ -21,8 +21,8 @@ public:
 		/// Just a simple static function here, call as ParserEmitter::Parse(...)
 	static void Parse (ChParticleEmitter& emitter, 
 					   ChSystem& msystem,
-					   ChSharedPtr<ChRandomParticlePositionRectangleOutlet> emitter_positions,
-					   ChSharedPtr<ChRandomParticleAlignment> emitter_rotations,
+					   std::shared_ptr<ChRandomParticlePositionRectangleOutlet> emitter_positions,
+					   std::shared_ptr<ChRandomParticleAlignment> emitter_rotations,
 					   rapidjson::Value& mval)
 	{
 		char* token;
@@ -31,12 +31,12 @@ public:
 		token = "outlet_height";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-			(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletHeight() = mval[token].GetDouble();
+			(std::shared_ptr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletHeight() = mval[token].GetDouble();
 		}
 		token = "outlet_width";
 		if (mval.HasMember(token)) {
 			if (!mval[token].IsNumber()) {throw (ChException( "Invalid number after '"+std::string(token)+"'"));}
-			(ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletWidth() = mval[token].GetDouble();
+			(std::shared_ptr<ChRandomParticlePositionRectangleOutlet>(emitter_positions))->OutletWidth() = mval[token].GetDouble();
 		}
 		token = "flow_control_mode";
 		if (mval.HasMember(token)) {

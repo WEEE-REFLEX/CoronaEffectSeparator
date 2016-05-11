@@ -132,8 +132,8 @@ public:
 	ElectricForcesCES ces_forces; // this contains data for computing the CES electric forces
 
 	ChParticleEmitter emitter;
-	ChSharedPtr<ChRandomParticlePositionRectangleOutlet> emitter_positions;
-	ChSharedPtr<ChRandomParticleAlignment> emitter_rotations;
+	std::shared_ptr<ChRandomParticlePositionRectangleOutlet> emitter_positions;
+	std::shared_ptr<ChRandomParticleAlignment> emitter_rotations;
 
 	double drumspeed_rpm; // [rpm]
 	double drumspeed_radss; //[rad/s]
@@ -148,7 +148,7 @@ public:
 	float surface_plate_rolling_friction;
 	float surface_plate_spinning_friction;
 	float surface_plate_restitution;
-	ChSharedPtr<ChMaterialSurface> surface_particles;
+	std::shared_ptr<ChMaterialSurface> surface_particles;
 
 	double max_particle_age;
 
@@ -219,7 +219,7 @@ public:
 		surface_plate_spinning_friction =0;
 		surface_plate_restitution =0;
 	
-		surface_particles = ChSharedPtr<ChMaterialSurface>(new ChMaterialSurface);
+		surface_particles = std::shared_ptr<ChMaterialSurface>(new ChMaterialSurface);
 		surface_particles->SetFriction(0.2f);
 		surface_particles->SetRollingFriction(0);
 		surface_particles->SetSpinningFriction(0);
@@ -291,36 +291,36 @@ public:
 		// configurations for the emitter.
 
 		// ---Initialize the randomizer for positions
-		emitter_positions = ChSharedPtr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
+		emitter_positions = std::shared_ptr<ChRandomParticlePositionRectangleOutlet>(new ChRandomParticlePositionRectangleOutlet);
 		emitter_positions->OutletWidth() = 0.1;    // default x outlet size, from CAD;
 		emitter_positions->OutletHeight() = 0.182; // default y outlet size, from CAD;
 		emitter.SetParticlePositioner(emitter_positions);
 
 		// ---Initialize the randomizer for alignments
-		emitter_rotations = ChSharedPtr<ChRandomParticleAlignmentUniform>(new ChRandomParticleAlignmentUniform);
+		emitter_rotations = std::shared_ptr<ChRandomParticleAlignmentUniform>(new ChRandomParticleAlignmentUniform);
 		emitter.SetParticleAligner(emitter_rotations);
 		
 		// ---Initialize the randomizer for creations, with statistical distribution
 
 		 // Create a ChRandomShapeCreator object (ex. here for metal particles)
-		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator_metal(new ChRandomShapeCreatorSpheres);
-		mcreator_metal->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.002, 0.003)) );
+		std::shared_ptr<ChRandomShapeCreatorSpheres> mcreator_metal(new ChRandomShapeCreatorSpheres);
+		mcreator_metal->SetDiameterDistribution( std::shared_ptr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.002, 0.003)) );
 
 		 // Optional: define a callback to be exectuted at each creation of a metal particle:
 		class MyCreator_metal : public ChCallbackPostCreation
 		{
 			// Here do custom stuff on the just-created particle:
-			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+			public: virtual void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
 			{
 				  // Attach some optional visualization stuff
-				//ChSharedPtr<ChTexture> mtexture(new ChTexture);
+				//std::shared_ptr<ChTexture> mtexture(new ChTexture);
 				//mtexture->SetTextureFilename("../objects/pinkwhite.png");
 				//mbody->AddAsset(mtexture);
-				ChSharedPtr<ChColorAsset> mvisual(new ChColorAsset);
+				std::shared_ptr<ChColorAsset> mvisual(new ChColorAsset);
 				mvisual->SetColor(ChColor(0.9f,0.4f,0.2f));
 				mbody->AddAsset(mvisual);
 				  // Attach a custom asset. It will hold electrical properties
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
+				std::shared_ptr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
 				electric_asset->fraction	  = ElectricParticleProperty::e_fraction_sphere;
 				electric_asset->material_type = ElectricParticleProperty::e_mat_metal;
 				electric_asset->conductivity  = 58000000;
@@ -342,24 +342,24 @@ public:
 
 
 		 // Create a ChRandomShapeCreator object (ex. here for metal particles)
-		ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator_plastic(new ChRandomShapeCreatorSpheres);
-		mcreator_plastic->SetDiameterDistribution( ChSmartPtr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.002, 0.002)) );
+		std::shared_ptr<ChRandomShapeCreatorSpheres> mcreator_plastic(new ChRandomShapeCreatorSpheres);
+		mcreator_plastic->SetDiameterDistribution( std::shared_ptr<ChMinMaxDistribution>(new ::ChMinMaxDistribution(0.002, 0.002)) );
 
 		 // Optional: define a callback to be exectuted at each creation of a plastic particle:
 		class MyCreator_plastic : public ChCallbackPostCreation
 		{
 			// Here do custom stuff on the just-created particle:
-			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+			public: virtual void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
 			{
 				  // Attach some optional visualization stuff
-				//ChSharedPtr<ChTexture> mtexture(new ChTexture);
+				//std::shared_ptr<ChTexture> mtexture(new ChTexture);
 				//mtexture->SetTextureFilename("../objects/bluwhite.png");
 				//mbody->AddAsset(mtexture);
-				ChSharedPtr<ChColorAsset> mvisual(new ChColorAsset);
+				std::shared_ptr<ChColorAsset> mvisual(new ChColorAsset);
 				mvisual->SetColor(ChColor(0.3f,0.6f,0.7f));
 				mbody->AddAsset(mvisual);
 				  // Attach a custom asset. It will hold electrical properties
-				ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
+				std::shared_ptr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
 				electric_asset->fraction	  = ElectricParticleProperty::e_fraction_sphere; 
 				electric_asset->material_type = ElectricParticleProperty::e_mat_plastic;
 				electric_asset->conductivity  = 0;
@@ -387,7 +387,7 @@ public:
 
 		 // Create a parent ChRandomShapeCreator that 'mixes' the two generators above,
 		 // mixing them with a given percentual:
-		ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
+		std::shared_ptr<ChRandomShapeCreatorFromFamilies> mcreatorTot(new ChRandomShapeCreatorFromFamilies);
 		mcreatorTot->AddFamily(mcreator_metal,   0.4);	// 1st creator family, with percentual
 		mcreatorTot->AddFamily(mcreator_plastic, 0.4);	// 2nd creator family, with percentual
 		mcreatorTot->Setup();
@@ -398,7 +398,7 @@ public:
 
 		// ---Initialize the randomizer for velocities, with statistical distribution
 
-		ChSharedPtr<ChRandomParticleVelocityConstantDirection> mvelo(new ChRandomParticleVelocityConstantDirection);
+		std::shared_ptr<ChRandomParticleVelocityConstantDirection> mvelo(new ChRandomParticleVelocityConstantDirection);
 		mvelo->SetDirection(-VECT_Y);
 		mvelo->SetModulusDistribution(0.0);
  
@@ -658,7 +658,7 @@ public:
 	{
 		for (unsigned int i=0; i<mysystem.Get_bodylist()->size(); i++)
 		{
-			ChBody* abody = (*mysystem.Get_bodylist())[i];
+			auto abody = (*mysystem.Get_bodylist())[i];
 
 			bool to_delete = false;
 
@@ -667,10 +667,9 @@ public:
 			// custom data that have been stored. ***ALEX
 			for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 			{
-				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-				if (myasset.IsType<ElectricParticleProperty>())
+				std::shared_ptr<ChAsset> myasset = abody->GetAssetN(na);
+				if (auto electricproperties = std::dynamic_pointer_cast<ElectricParticleProperty>(myasset))
 				{
-					ChSharedPtr<ElectricParticleProperty> electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 					double particle_birthdate  = electricproperties->birthdate ;
 					double particle_age = mysystem.GetChTime() - particle_birthdate;
 					if (particle_age > max_age)
@@ -682,12 +681,8 @@ public:
 
 			if (to_delete)
 			{
-				abody->AddRef();	// dirty trick to convert basic pointer to..
-				ChSharedPtr<ChBody> mysharedbody(abody); // ..shared pointer
+				mysystem.Remove(abody);
 
-				mysystem.Remove(mysharedbody);
-
-				// mysharedbody->RemoveRef(); //***NOT needed - previously needed cause always Add() to POV exporter..
 				i--; // this because if deleted, the rest of the array is shifted back one position..
 			}
 		}
@@ -703,22 +698,20 @@ public:
 
 		for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
 		{
-			ChBody* abody = (*msystem->Get_bodylist())[i];
+			auto abody = (*msystem->Get_bodylist())[i];
 
 			bool was_a_particle = false;
-			ChSharedPtr<ElectricParticleProperty> electricproperties; // null by default
 
 			// Fetch the ElectricParticleProperty asset from the list of 
 			// assets that have been attached to the object, and retrieve the
 			// custom data that have been stored. ***ALEX
 			for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 			{
-				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-				if (myasset.IsType<ElectricParticleProperty>())
+				std::shared_ptr<ChAsset> myasset = abody->GetAssetN(na);
+				if (auto electricproperties = std::dynamic_pointer_cast<ElectricParticleProperty>(myasset))
 				{
 					// OK! THIS WAS A PARTICLE! ***ALEX
 					was_a_particle = true;		
-					electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 				} 
 			}
 
@@ -746,21 +739,20 @@ public:
 
 		for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
 		{
-			ChBody* abody = (*msystem->Get_bodylist())[i];
+			auto abody = (*msystem->Get_bodylist())[i];
 
 			bool was_a_particle = false;
-			ChSharedPtr<ParticleTrajectory> trajectoryasset; // null by default
+			std::shared_ptr<ParticleTrajectory> trajectoryasset; // null by default
 
 			// Fetch the ElectricParticleProperty asset from the list of 
 			// assets that have been attached to the object, and retrieve the
 			// custom data that have been stored. ***ALEX
 			for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 			{
-				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-				if (myasset.IsType<ParticleTrajectory>())
+				std::shared_ptr<ChAsset> myasset = abody->GetAssetN(na);
+				if (auto trajectoryasset = std::dynamic_pointer_cast<ParticleTrajectory>(myasset))
 				{
 					// OK! trajectory storage!	
-					trajectoryasset = myasset.DynamicCastTo<ParticleTrajectory>();
 					trajectoryasset->positions.push_back( abody->GetPos() );
 					trajectoryasset->speeds.push_back( abody->GetPos_dt() );
 					
@@ -784,22 +776,20 @@ public:
 
 		for (unsigned int i=0; i<msystem->Get_bodylist()->size(); i++)
 		{
-			ChBody* abody = (*msystem->Get_bodylist())[i];
+			auto abody = (*msystem->Get_bodylist())[i];
 
 			ChVector<> pointA = abody->GetPos();
 
 			bool was_a_particle = false;
-			ChSharedPtr<ParticleTrajectory> trajectoryasset; // null by default
 
 			// Fetch the ElectricParticleProperty asset from the list of 
 			// assets that have been attached to the object, and retrieve the
 			// custom data that have been stored. ***ALEX
 			for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 			{
-				ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
-				if (myasset.IsType<ParticleTrajectory>())
+				std::shared_ptr<ChAsset> myasset = abody->GetAssetN(na);
+				if (auto trajectoryasset = std::dynamic_pointer_cast<ParticleTrajectory>(myasset))
 				{
-					trajectoryasset = myasset.DynamicCastTo<ParticleTrajectory>();
 					int npoints = 0;
 					std::list< ChVector<> >::const_iterator iterator;
 					std::list< ChVector<> >::const_iterator iteratorspeed;
@@ -882,8 +872,8 @@ public:
 		//ChCoordsys<> conveyor_csys = CSYSNORM;
 
 
-		ChSharedPtr<ChMarker> my_marker = mphysicalSystem.SearchMarker("centro_nastro");
-		if (my_marker.IsNull())
+		std::shared_ptr<ChMarker> my_marker = mphysicalSystem.SearchMarker("centro_nastro");
+		if (!my_marker)
 			GetLog() << "Error: cannot find centro_nastro marker from its name in the C::E system! \n";
 		else
 			conveyor_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
@@ -891,19 +881,19 @@ public:
 		//****Ida
 
 		my_marker = mphysicalSystem.SearchMarker("Splitter1");
-		if (my_marker.IsNull())
+		if (!my_marker)
 			GetLog() << "Error: cannot find Splitter1 marker from its name in the C::E system! \n";
 		else
 			Splitter1_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
 
 		my_marker = mphysicalSystem.SearchMarker("Splitter2");
-		if (my_marker.IsNull())
+		if (!my_marker)
 			GetLog() << "Error: cannot find Splitter2 marker from its name in the C::E system! \n";
 		else
 			Splitter2_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
 
 		my_marker = mphysicalSystem.SearchMarker("Spazzola");
-		if (my_marker.IsNull())
+		if (!my_marker)
 			GetLog() << "Error: cannot find Spazzola marker from its name in the C::E system! \n";
 		else
 			Spazzola_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
@@ -912,7 +902,7 @@ public:
 
 		
 		my_marker = mphysicalSystem.SearchMarker("centro_nozzle");
-		if (my_marker.IsNull())
+		if (!my_marker)
 			GetLog() << "Error: cannot find centro_nozzle marker from its name in the C::E system! \n";
 		else
 			nozzle_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
@@ -922,30 +912,30 @@ public:
 
 		
 		my_marker = mphysicalSystem.SearchMarker("centro_cilindro");
-		if (my_marker.IsNull())
+		if (!my_marker)
 			GetLog() << "Error: cannot find centro_cilindro marker from its name in the C::E system! \n";
 		else
 			drum_csys = my_marker->GetAbsCoord();  // fetch both pos and rotation of CAD
 			
 			// fetch mrigidBodyDrum pointer! will be used for changing the friction, the collision family, and later to create the motor
-		ChSharedPtr<ChBodyAuxRef> mrigidBodyDrum = mphysicalSystem.Search("drum-1").DynamicCastTo<ChBodyAuxRef>();  
-		if (mrigidBodyDrum.IsNull())
+		auto mrigidBodyDrum = std::dynamic_pointer_cast<ChBodyAuxRef>(mphysicalSystem.Search("drum-1"));  
+		if (!mrigidBodyDrum)
 			GetLog() << "ERROR: cannot find drum-1 from its name in the C::E system! ! \n";
 		else
 		{
 			mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
 			mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 			mrigidBodyDrum->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
-			mrigidBodyDrum->SetFriction(surface_drum_friction); 
-			mrigidBodyDrum->SetImpactC(surface_drum_restitution);
-			mrigidBodyDrum->SetRollingFriction(surface_drum_rolling_friction);
-			mrigidBodyDrum->SetSpinningFriction(surface_drum_spinning_friction);
+			mrigidBodyDrum->GetMaterialSurface()->SetFriction(surface_drum_friction); 
+			mrigidBodyDrum->GetMaterialSurface()->SetRestitution(surface_drum_restitution);
+			mrigidBodyDrum->GetMaterialSurface()->SetRollingFriction(surface_drum_rolling_friction);
+			mrigidBodyDrum->GetMaterialSurface()->SetSpinningFriction(surface_drum_spinning_friction);
 		}
 		
 		//***Ida
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter1 = mphysicalSystem.Search("Splitter-10").DynamicCastTo<ChBodyAuxRef>();  
-		if (mrigidBodySplitter1.IsNull())
+		auto mrigidBodySplitter1 = std::dynamic_pointer_cast<ChBodyAuxRef>(mphysicalSystem.Search("Splitter-10"));  
+		if (!mrigidBodySplitter1)
 			GetLog() << "ERROR: cannot find Splitter-10 from its name in the C::E system! ! \n";
 		else
 		{
@@ -953,12 +943,12 @@ public:
 			mrigidBodySplitter1->GetCollisionModel()->SetFamily(3); // rivedere 
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
-			mrigidBodySplitter1->SetFriction(0.1f); 
+			mrigidBodySplitter1->GetMaterialSurface()->SetFriction(0.1f); 
 			mrigidBodySplitter1->SetCollide(this->splitters_collide); // deactivate collision?
 		}
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodySplitter2 = mphysicalSystem.Search("Splitter2-1").DynamicCastTo<ChBodyAuxRef>();  
-		if (mrigidBodySplitter2.IsNull())
+		auto mrigidBodySplitter2 = std::dynamic_pointer_cast<ChBodyAuxRef>(mphysicalSystem.Search("Splitter2-1"));  
+		if (!mrigidBodySplitter2)
 			GetLog() << "ERROR: cannot find Splitter2-1 from its name in the C::E system! ! \n";
 		else
 		{
@@ -966,34 +956,34 @@ public:
 			mrigidBodySplitter2->GetCollisionModel()->SetFamily(3);// rivedere
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);// rivedere
 			mrigidBodySplitter2->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
-			mrigidBodySplitter2->SetFriction(0.1f); 
+			mrigidBodySplitter2->GetMaterialSurface()->SetFriction(0.1f); 
 			mrigidBodySplitter2->SetCollide(this->splitters_collide); // deactivate collision?
 		}
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodySpazzola = mphysicalSystem.Search("Spazzola-1").DynamicCastTo<ChBodyAuxRef>();  
-		if (mrigidBodySpazzola.IsNull())
+		auto mrigidBodySpazzola = std::dynamic_pointer_cast<ChBodyAuxRef>(mphysicalSystem.Search("Spazzola-1"));  
+		if (!mrigidBodySpazzola)
 			GetLog() << "ERROR: cannot find Spazzola-1 from its name in the C::E system! ! \n";
 		else
 		{
 			mrigidBodySpazzola->GetCollisionModel()->SetFamily(1); // rivedere
 			mrigidBodySpazzola->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);// rivedere
 			mrigidBodySpazzola->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);// rivedere
-			mrigidBodySpazzola->SetFriction(0.9f);
+			mrigidBodySpazzola->GetMaterialSurface()->SetFriction(0.9f);
 					
 		}
 
-		ChSharedPtr<ChBodyAuxRef> mrigidBodyConveyor = mphysicalSystem.Search("conveyor-1").DynamicCastTo<ChBodyAuxRef>();  
-		if (mrigidBodyConveyor.IsNull())
+		auto mrigidBodyConveyor = std::dynamic_pointer_cast<ChBodyAuxRef>(mphysicalSystem.Search("conveyor-1"));  
+		if (!mrigidBodyConveyor)
 			GetLog() << "ERROR: cannot find conveyor from its name in the C::E system! ! \n";
 		else
 		{
 			mrigidBodyConveyor->GetCollisionModel()->SetFamily(2);
 			mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 			mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
-			mrigidBodyConveyor->SetFriction(surface_plate_friction);
-			mrigidBodyConveyor->SetImpactC(surface_plate_restitution);
-			mrigidBodyConveyor->SetRollingFriction(surface_plate_rolling_friction);
-			mrigidBodyConveyor->SetSpinningFriction(surface_plate_spinning_friction);
+			mrigidBodyConveyor->GetMaterialSurface()->SetFriction(surface_plate_friction);
+			mrigidBodyConveyor->GetMaterialSurface()->SetRestitution(surface_plate_restitution);
+			mrigidBodyConveyor->GetMaterialSurface()->SetRollingFriction(surface_plate_rolling_friction);
+			mrigidBodyConveyor->GetMaterialSurface()->SetSpinningFriction(surface_plate_spinning_friction);
 		}
 
 
@@ -1003,7 +993,7 @@ public:
 		// Create a truss (absolute fixed reference body, for connecting the rotating cyl.)
 		//
 
-		ChSharedPtr<ChBody> mtruss(new ChBody);
+		std::shared_ptr<ChBody> mtruss(new ChBody);
 		mtruss->SetBodyFixed(true);
 
 		// Finally, do not forget to add the body to the system:
@@ -1011,7 +1001,7 @@ public:
 	    
 		//**Ida
 
-		ChSharedPtr<ChBody> mtruss2(new ChBody);
+		std::shared_ptr<ChBody> mtruss2(new ChBody);
 		mtruss2->SetBodyFixed(true);
 
 		// Finally, do not forget to add the body to the system:
@@ -1023,16 +1013,16 @@ public:
 		// Create a motor constraint between the cylinder and the truss
 		//
 
-		ChSharedPtr<ChLinkEngine> mengine;
+		std::shared_ptr<ChLinkEngine> mengine;
 
-		if (!mrigidBodyDrum.IsNull())
+		if (mrigidBodyDrum)
 		{
-			mengine = ChSharedPtr<ChLinkEngine>(new ChLinkEngine);
-			ChSharedPtr<ChBody> mdrum(mrigidBodyDrum);
+			mengine = std::shared_ptr<ChLinkEngine>(new ChLinkEngine);
+			std::shared_ptr<ChBody> mdrum(mrigidBodyDrum);
 			mengine->Initialize(mdrum, mtruss, drum_csys);
 
 			mengine->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
-			if (ChSharedPtr<ChFunction_Const> mfun = (mengine->Get_spe_funct().DynamicCastTo<ChFunction_Const>()))
+			if (auto mfun = std::dynamic_pointer_cast<ChFunction_Const>(mengine->Get_spe_funct()))
 				mfun->Set_yconst(-drumspeed_radss);  // angular speed in [rad/s]
 
 			// Finally, do not forget to add the body to the system:
@@ -1041,16 +1031,16 @@ public:
 
 		//***Ida
 
-		ChSharedPtr<ChLinkEngine> mengine2;
+		std::shared_ptr<ChLinkEngine> mengine2;
 
-		if (!mrigidBodySpazzola.IsNull())
+		if (mrigidBodySpazzola)
 		{
-			mengine2 = ChSharedPtr<ChLinkEngine>(new ChLinkEngine);
-			ChSharedPtr<ChBody> mSpazzola(mrigidBodySpazzola);
+			mengine2 = std::shared_ptr<ChLinkEngine>(new ChLinkEngine);
+			std::shared_ptr<ChBody> mSpazzola(mrigidBodySpazzola);
 			mengine2->Initialize(mSpazzola, mtruss2, Spazzola_csys);
 
 			mengine2->Set_eng_mode(ChLinkEngine::ENG_MODE_SPEED);
-			if (ChSharedPtr<ChFunction_Const> mfun = (mengine2->Get_spe_funct().DynamicCastTo<ChFunction_Const>() ))
+			if (auto mfun = std::dynamic_pointer_cast<ChFunction_Const>(mengine2->Get_spe_funct()))
 				mfun->Set_yconst(-drumspeed_radss); // angular speed in [rad/s]
 
 			// Finally, do not forget to add the body to the system:
@@ -1130,13 +1120,13 @@ public:
 		// a- define a class that implement your custom PostCreation method...
 		class MyCreatorForAll : public ChCallbackPostCreation
 		{
-			public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+			public: virtual void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
 			{
 				// Set the friction properties (using a shared ChSurfaceMaterial
 				mbody->SetMaterialSurface( asurface_material ); 
 
 				// Attach an asset to show trajectories
-				//ChSharedPtr<ParticleTrajectory> massettraj(new ParticleTrajectory);
+				//std::shared_ptr<ParticleTrajectory> massettraj(new ParticleTrajectory);
 				//mbody->AddAsset(massettraj);
 
 				// Enable Irrlicht visualization for all particles
@@ -1150,9 +1140,9 @@ public:
 				// Disable gyroscopic forces for increased integrator stabilty
 				mbody->SetNoGyroTorque(true);
 			}
-			irr::ChIrrApp* airrlicht_application;
+			ChIrrApp* airrlicht_application;
 			ChPovRay* apov_exporter;
-			ChSharedPtr<ChMaterialSurface> asurface_material;
+			std::shared_ptr<ChMaterialSurface> asurface_material;
 		};
 		// b- create the callback object...
 		MyCreatorForAll* mcreation_callback = new MyCreatorForAll;
@@ -1177,7 +1167,7 @@ public:
 		// counter of particles that flow into a rectangle with a statistical distribution to plot:
 		//  -create the trigger:
 		double flowmeter_length = this->flowmeter_xmax-this->flowmeter_xmin;
-		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle (new ChParticleEventFlowInRectangle(flowmeter_length,flowmeter_width));
+		std::shared_ptr<ChParticleEventFlowInRectangle> distrrectangle (new ChParticleEventFlowInRectangle(flowmeter_length,flowmeter_width));
 		distrrectangle->rectangle_csys = ChCoordsys<>( 
 			drum_csys.pos + ChVector<>(this->flowmeter_xmin+0.5*flowmeter_length,
 									   this->flowmeter_y, 
@@ -1186,7 +1176,7 @@ public:
 		distrrectangle->margin = 0.05;
 		//  -create the counter, with 20x10 resolution of sampling, on x y
 		//    This is defined in ProcessFlow.h and distinguishes plastic from metal
-		ChSharedPtr<ProcessFlow> countdistribution (new ProcessFlow(this->flowmeter_bins,1));
+		std::shared_ptr<ProcessFlow> countdistribution (new ProcessFlow(this->flowmeter_bins,1));
 		//  -create the processor and plug in the trigger and the counter:
 		ChParticleProcessor processor_distribution;
 		processor_distribution.SetEventTrigger(distrrectangle);
@@ -1198,10 +1188,10 @@ public:
 		// The fact that particles are handled with shared pointers means that,
 		// after they are removed from the ChSystem, they are also automatically
 		// deleted if no one else is referencing them.
-		ChSharedPtr<ChParticleEventFlowInRectangle> distrrectangle2 (new ChParticleEventFlowInRectangle(0.20,0.30));
+		std::shared_ptr<ChParticleEventFlowInRectangle> distrrectangle2 (new ChParticleEventFlowInRectangle(0.20,0.30));
 		distrrectangle2->rectangle_csys = distrrectangle->rectangle_csys;
 		distrrectangle2->margin = 0.05;
-		ChSharedPtr<ChParticleProcessEventRemove> removal_event (new ChParticleProcessEventRemove);
+		std::shared_ptr<ChParticleProcessEventRemove> removal_event (new ChParticleProcessEventRemove);
 		ChParticleProcessor processor_remover;
 		processor_remover.SetEventTrigger(distrrectangle2);
 		processor_remover.SetParticleEventProcessor(removal_event);
@@ -1215,7 +1205,7 @@ public:
 		application.SetTimestep(this->timestep);
 		
 		application.GetSystem()->SetIntegrationType(ChSystem::INT_ANITESCU);
-		application.GetSystem()->SetLcpSolverType(ChSystem::LCP_ITERATIVE_SOR_MULTITHREAD);// LCP_ITERATIVE_SOR_MULTITHREAD or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
+		application.GetSystem()->SetSolverType(ChSystem::SOLVER_SOR_MULTITHREAD);// LCP_ITERATIVE_SOR_MULTITHREAD or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
 
 		application.GetSystem()->Set_G_acc(ChVector<>(0, -9.81, 0));
 
@@ -1280,8 +1270,8 @@ public:
 
 
 				// Maybe the user played with the slider and changed the speed of drum...
-				if (!mengine.IsNull())
-					if (ChSharedPtr<ChFunction_Const> mfun = (mengine->Get_spe_funct().DynamicCastTo<ChFunction_Const>() ))
+				if (mengine)
+					if (auto mfun = std::dynamic_pointer_cast<ChFunction_Const>(mengine->Get_spe_funct()))
 					mfun->Set_yconst(-drumspeed_radss);  // angular speed in [rad/s]
 
 				// update the assets containing the trajectories, if any
@@ -1305,19 +1295,17 @@ public:
 						ChStreamOutAsciiFile file_for_output(buffer);
 						for (unsigned int i=0; i<mphysicalSystem.Get_bodylist()->size(); i++)
 						{
-							ChBody* abody = (*mphysicalSystem.Get_bodylist())[i];
+							auto abody = (*mphysicalSystem.Get_bodylist())[i];
 
 							// Fetch the ElectricParticleProperty asset from the list
 							for (unsigned int na= 0; na< abody->GetAssets().size(); na++)
 							{
-								ChSharedPtr<ChAsset> myasset = abody->GetAssetN(na);
+								std::shared_ptr<ChAsset> myasset = abody->GetAssetN(na);
 								
-								if (myasset.IsType<ElectricParticleProperty>())
+								if (auto electricproperties = std::dynamic_pointer_cast<ElectricParticleProperty>(myasset))
 								{
 									// ok, its a particle!
 
-									
-									ChSharedPtr<ElectricParticleProperty> electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 									//double my_cond  = electricproperties->conductivity ;
 									ChVector<> my_ElectricForce = electricproperties->ElectricForce;
 									ChVector<> my_ElectricImageForce = electricproperties->ElectricImageForce;

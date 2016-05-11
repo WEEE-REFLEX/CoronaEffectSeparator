@@ -28,14 +28,12 @@ public:
 	}
 
 		/// Remove the particle from the system. 
-	virtual void ParticleProcessEvent(ChSharedPtr<ChBody> mbody, 
+	virtual void ParticleProcessEvent(std::shared_ptr<ChBody> mbody, 
 									  ChSystem& msystem, 
-									  ChSharedPtr<ChParticleEventTrigger> mprocessor ) 
+									  std::shared_ptr<ChParticleEventTrigger> mprocessor ) 
 	{
-		assert(mprocessor.IsType<ChParticleEventFlowInRectangle>());
-		if (mprocessor.IsType<ChParticleEventFlowInRectangle>())
+		if (auto mrectangleprocessor = std::dynamic_pointer_cast<ChParticleEventFlowInRectangle>(mprocessor))
 		{
-			ChSharedPtr<ChParticleEventFlowInRectangle> mrectangleprocessor = mprocessor.DynamicCastTo<ChParticleEventFlowInRectangle>();
 			// compute the row and colum of the matrix
 
 			int irow = (int)floor(mmass_plastic.GetRows() * mrectangleprocessor->last_intersectionUV.x);
@@ -46,11 +44,10 @@ public:
 			// Fetch the ElectricParticleProperty asset from the list
 			for (unsigned int na= 0; na< mbody->GetAssets().size(); na++)
 			{
-				ChSharedPtr<ChAsset> myasset = mbody->GetAssetN(na);
-				if (myasset.IsType<ElectricParticleProperty>())
+				std::shared_ptr<ChAsset> myasset = mbody->GetAssetN(na);
+				if (auto electricproperties = std::dynamic_pointer_cast<ElectricParticleProperty>(myasset))
 				{
 					// ok, its a particle!
-					ChSharedPtr<ElectricParticleProperty> electricproperties = myasset.DynamicCastTo<ElectricParticleProperty>();
 
 					if (electricproperties->material_type == ElectricParticleProperty::e_mat_plastic)
 					{

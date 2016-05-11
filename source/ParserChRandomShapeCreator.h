@@ -21,11 +21,11 @@ class ParserChRandomShapeGenerator
 public:
 	
 		/// Just a simple static function here, call as ParserChRandomShapeGenerator::Parse(...)
-	static ChSharedPtr<ChRandomShapeCreator> ParseCreate (rapidjson::Value& mval, ChSystem& msystem)
+	static std::shared_ptr<ChRandomShapeCreator> ParseCreate (rapidjson::Value& mval, ChSystem& msystem)
 	{
 		if (!mval.IsObject()) {throw (ChException( "Invalid shape creator object."));}
 
-		ChSharedPtr<ChRandomShapeCreator> parsed_creator;
+		std::shared_ptr<ChRandomShapeCreator> parsed_creator;
 
 		char* token;
 		
@@ -39,7 +39,7 @@ public:
 			if (mtype == std::string("ChRandomShapeCreatorSpheres") )
 			{
 				// Create a sphere generator!
-				ChSharedPtr<ChRandomShapeCreatorSpheres> mcreator(new ChRandomShapeCreatorSpheres);
+				std::shared_ptr<ChRandomShapeCreatorSpheres> mcreator(new ChRandomShapeCreatorSpheres);
 				parsed_creator = mcreator;
 
 				token = "diameter_distribution";
@@ -57,7 +57,7 @@ public:
 			if (mtype == std::string("ChRandomShapeCreatorBoxes") )
 			{
 				// Create a boxes generator!
-				ChSharedPtr<ChRandomShapeCreatorBoxes> mcreator(new ChRandomShapeCreatorBoxes);
+				std::shared_ptr<ChRandomShapeCreatorBoxes> mcreator(new ChRandomShapeCreatorBoxes);
 				parsed_creator = mcreator;
 
 				token = "Xsize_distribution";
@@ -85,7 +85,7 @@ public:
 			if (mtype == std::string("ChRandomShapeCreatorCylinders") )
 			{
 				// Create a boxes generator!
-				ChSharedPtr<ChRandomShapeCreatorCylinders> mcreator(new ChRandomShapeCreatorCylinders);
+				std::shared_ptr<ChRandomShapeCreatorCylinders> mcreator(new ChRandomShapeCreatorCylinders);
 				parsed_creator = mcreator;
 
 				token = "diameter";
@@ -108,7 +108,7 @@ public:
 			if (mtype == std::string("ChRandomShapeCreatorConvexHulls") )
 			{
 				// Create a boxes generator!
-				ChSharedPtr<ChRandomShapeCreatorConvexHulls> mcreator(new ChRandomShapeCreatorConvexHulls);
+				std::shared_ptr<ChRandomShapeCreatorConvexHulls> mcreator(new ChRandomShapeCreatorConvexHulls);
 				parsed_creator = mcreator;
 
 				token = "npoints";
@@ -141,7 +141,7 @@ public:
 			if (mtype == std::string("ChRandomShapeCreatorShavings") )
 			{
 				// Create a boxes generator!
-				ChSharedPtr<ChRandomShapeCreatorShavings> mcreator(new ChRandomShapeCreatorShavings);
+				std::shared_ptr<ChRandomShapeCreatorShavings> mcreator(new ChRandomShapeCreatorShavings);
 				parsed_creator = mcreator;
 
 				token = "spacing_factor";
@@ -180,7 +180,7 @@ public:
 			if (mtype == std::string("ChRandomShapeCreatorFromFamilies") )
 			{
 				// Create a family generator!
-				ChSharedPtr<ChRandomShapeCreatorFromFamilies> mcreator(new ChRandomShapeCreatorFromFamilies);
+				std::shared_ptr<ChRandomShapeCreatorFromFamilies> mcreator(new ChRandomShapeCreatorFromFamilies);
 				parsed_creator = mcreator;
 
 				char* protoken = "probability_mode";
@@ -272,15 +272,15 @@ public:
 					class MyCreator_custom : public ChCallbackPostCreation
 					{
 						// Here do custom stuff on the just-created particle:
-						public: virtual void PostCreation(ChSharedPtr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
+						public: virtual void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator)
 						{
 							  // Attach some optional visualization stuff
-							ChSharedPtr<ChColorAsset> mvisual(new ChColorAsset);
+							std::shared_ptr<ChColorAsset> mvisual(new ChColorAsset);
 							mvisual->SetColor(this->def_color);
 							mbody->AddAsset(mvisual);
 
 							  // Attach a custom asset. It will hold electrical properties
-							ChSharedPtr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
+							std::shared_ptr<ElectricParticleProperty> electric_asset(new ElectricParticleProperty); 
 							
 							electric_asset->material_type = this->def_mattype;
 							electric_asset->conductivity  = this->def_conductivity;
@@ -330,7 +330,7 @@ public:
 			}
 
 		}
-		if (parsed_creator.IsNull()) {throw (ChException( "Cannot create the specified particle creator (check after 'type': .. )"));}
+		if (!parsed_creator) {throw (ChException( "Cannot create the specified particle creator (check after 'type': .. )"));}
 
 		return parsed_creator;
 	}
