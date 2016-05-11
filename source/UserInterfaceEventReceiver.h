@@ -4,7 +4,7 @@
 // Define a UserInterfaceEventReceiver class which will be used to manage input
 // from the GUI graphical user interface
 
-#include "UNIT_irrlicht/CHirrApp.h"
+#include "chrono_irrlicht/CHirrApp.h"
 
 
 

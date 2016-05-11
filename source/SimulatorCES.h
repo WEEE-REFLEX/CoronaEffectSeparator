@@ -14,9 +14,9 @@
 #include "physics/CHconveyor.h"
 #include "physics/CHbodyAuxRef.h"
 #include "core/ChFileutils.h"
-#include "UNIT_irrlicht/CHbodySceneNode.h"
-#include "UNIT_irrlicht/CHbodySceneNodeTools.h" 
-#include "UNIT_irrlicht/CHirrApp.h"
+#include "chrono_irrlicht/CHbodySceneNode.h"
+#include "chrono_irrlicht/CHbodySceneNodeTools.h" 
+#include "chrono_irrlicht/CHirrApp.h"
 #include "core/ChRealtimeStep.h"
 #include "core/ChMath.h"
 #include "core/ChDistribution.h"
@@ -26,8 +26,8 @@
 #include "particlefactory/ChParticleProcessor.h"
 
 #include <fstream>
-#include "unit_PYTHON/ChPython.h"
-#include "unit_POSTPROCESS/ChPovRay.h"
+#include "chrono_python/ChPython.h"
+#include "chrono_postprocess/ChPovRay.h"
 
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
