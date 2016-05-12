@@ -269,7 +269,7 @@ public:
 
 		timestep = 0.001;
 
-		Tmax = 0.1;
+		Tmax = 5;
 
 		splitters_collide = true;
 
@@ -1205,7 +1205,7 @@ public:
 		application.SetTimestep(this->timestep);
 		
 		application.GetSystem()->SetIntegrationType(ChSystem::INT_ANITESCU);
-		application.GetSystem()->SetSolverType(ChSystem::SOLVER_SOR_MULTITHREAD);// LCP_ITERATIVE_SOR_MULTITHREAD or ChSystem::LCP_ITERATIVE_BARZILAIBORWEIN for max precision
+		application.GetSystem()->SetSolverType(ChSystem::SOLVER_SOR_MULTITHREAD);// SOLVER_SOR_MULTITHREAD or SOLVER_BARZILAIBORWEIN for max precision
 
 		application.GetSystem()->Set_G_acc(ChVector<>(0, -9.81, 0));
 

@@ -17,3 +17,9 @@ Simulation of a CES device, using ProjectChrono Chrono::Engine library
 - edit CAD_conveyor\settings.ces if you need
 
 - run the exe in D:\foo\Release\
+
+Note: if you want to modify the 3D geometry, 
+rather than editing directly the .py file, it is better
+that you install Chrono::SolidWorks, load the assembly of
+CAD_conveyor\CAD\ into SolidWorks, modify geometries,
+then use Chrono::SolidWorks to export into python .py.
