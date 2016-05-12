@@ -1,12 +1,13 @@
 {
-	"solidworks_exported_model"	: "../CAD_conveyor/conveyor_Ida",
+	"solidworks_exported_model"	: "../CAD_conveyor/CES_model",
     "drum_rpm"					: 44.8,
     "voltage"					: 30000,
 	"save_each_Nsteps"			: 5,
     "save_dataset"				: false,
     "save_irrlicht_screenshots"	: false,
-    "save_POV_screenshots"		: true,
+    "save_POV_screenshots"		: false,
 	"timestep"					: 0.001,
+	"Tmax"						: 5,
 	"surface_drum_friction" 			: 0.5,
 	"surface_drum_rolling_friction" 	: 0,
 	"surface_drum_spinning_friction"	: 0,
@@ -19,6 +20,10 @@
 	"surface_particles_rolling_friction" : 0,
 	"surface_particles_spinning_friction" : 0,
 	"surface_particles_restitution" 	: 0,
+	"flowmeter_xmin" 					: 0.0,
+	"flowmeter_xmax" 					: 0.4,
+	"flowmeter_y" 						: -0.06,
+	"flowmeter_width" 					: 0.3,
 	"max_particle_age"					: 100,
 	"default_collision_envelope" 		: 0.001,
 	"default_collision_margin" 			: 0.0005,
@@ -36,9 +41,9 @@
 	"emitter" : 	{
 						"outlet_height"	: 0.1,
 						"outlet_width"	: 0.182,
-						"particles_per_second"	: 15000,
+						"particles_per_second"	: 5000,
 						"use_particle_reservoir" : true,
-						"particle_reservoir" : 30000,
+						"particle_reservoir" : 5000,
 						"particle_creator" :
 						{
 							"type" : "ChRandomShapeCreatorFromFamilies",
