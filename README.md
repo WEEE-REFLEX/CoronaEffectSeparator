@@ -14,6 +14,6 @@ Simulation of a CES device, using ProjectChrono Chrono::Engine library
 
 - copy the directory objects into D:\foo\objects
 
-- edit objects\settings.ces if you need
+- edit CAD_conveyor\settings.ces if you need
 
 - run the exe in D:\foo\Release\

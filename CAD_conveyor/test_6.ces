@@ -1,0 +1,77 @@
+{
+	"solidworks_exported_model"	: "NO_SOLIDWORKS_FILE",
+    "drum_rpm"					: 44.8,
+	"save_each_Nsteps"			: 5,
+    "save_dataset"				: false,
+    "save_irrlicht_screenshots"	: false,
+    "save_POV_screenshots"		: false,
+	"timestep"					: 0.001,
+	"surface_drum_friction" 			: 0.5,
+	"surface_drum_rolling_friction" 	: 0,
+	"surface_drum_spinning_friction"	: 0,
+	"surface_drum_restitution" 			: 0,
+	"surface_plate_friction" 			: 0.5,
+	"surface_plate_rolling_friction"	: 0,
+	"surface_plate_spinning_friction"	: 0,
+	"surface_plate_restitution" 		: 0,
+	"surface_particles_friction" 		: 0.0,
+	"surface_particles_rolling_friction" : 0,
+	"surface_particles_spinning_friction" : 0,
+	"surface_particles_restitution" 	: 0,
+	"max_particle_age"					: 0.2,
+	"default_collision_envelope" 		: 0.001,
+	"default_collision_margin" 			: 0.0005,
+	"default_contact_breaking"			: 0.001,
+	"max_penetration_recovery_speed"	: 0.14,
+	"min_bounce_speed"					: 0.1,
+	"CES_forces" : 	{
+						"U"				: 30000,
+						"L"				: 0.267,
+						"alpha_deg" 	: 30,
+						"drum_diameter"	: 0.320,
+						"drum_width"	: 0.3,
+						"electrodediameter": 0.038
+					},
+	"emitter" : 	{
+						"outlet_height"	: 0.1,
+						"outlet_width"	: 0.182,
+						"particles_per_second"	: 2000,
+						"use_particle_reservoir" : false,
+						"particle_reservoir" : 1000,
+						"particle_creator" :
+						{
+							"type" : "ChRandomShapeCreatorShavings",
+							"spacing_factor" : 0.7,
+							"diameter" :{
+									"type" : "ChConstantDistribution",
+									"value": 0.002
+													},
+							"twistU" :{
+									"type" : "ChMinMaxDistribution",
+									"min"  : 30,
+									"max"  : 400
+													},
+							"twistV" :{
+									"type" : "ChMinMaxDistribution",
+									"min"  : 20,
+									"max"  : 620
+													},
+							"lengthratio" :{
+									"type" : "ChMinMaxDistribution",
+									"min"  : 4,
+									"max"  : 7
+													},
+							"density ":{
+									"type" : "ChMinMaxDistribution",
+									"min"  : 900,
+									"max"  : 946
+													},
+							"add_collision_shape" 		: true,
+							"add_visualization_asset" 	: true,
+							"material_type"				: "plastic",
+							"color"						: [0.35,0.4,0.5],
+							"probability" 				: 0.4
+						}
+					}
+}
+
