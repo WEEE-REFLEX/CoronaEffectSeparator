@@ -2,7 +2,7 @@
 // from the GUI graphical user interface
 
 #include "UserInterfaceEventReceiver.h" 
-#include "SimulatorCES.h" 
+#include "ElectrostaticCoronaSeparator.h" 
 
 
 using namespace irr;
@@ -14,7 +14,7 @@ using namespace gui;
 using namespace chrono::irrlicht;
 
 
-UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp, SimulatorCES* mysimulator)
+UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp, ElectrostaticCoronaSeparator* mysimulator)
 {
 	// store pointer applicaiton
 	application = myapp;
@@ -22,27 +22,32 @@ UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp,
 
 	// ..add a GUI slider to control particles flow
 	scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
-					true, rect<s32>(560, 15, 700, 15+20), 0, 101);
-	scrollbar_flow->setMax(100);
-	scrollbar_flow->setPos(((int)((mysimulator->emitter.ParticlesPerSecond()/1000.0 )*25)));
+					true, rect<s32>(560, 15, 700, 15+20), nullptr, 101);
+    scrollbar_flow->setMax(5000);
+	//scrollbar_flow->setPos(mysimulator->emitter.ParticlesPerSecond());
+	scrollbar_flow->setPos(simulator->particle_flow);
 	text_flow = application->GetIGUIEnvironment()->addStaticText(
 				L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
 
 	// ..add GUI slider to control the speed
 	scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(
-					true, rect<s32>(560, 40, 700, 40+20), 0, 102);
+					true, rect<s32>(560, 40, 700, 40+20), nullptr, 102);
 	scrollbar_speed->setMax(100); 
-    scrollbar_speed->setPos(((int)((mysimulator->drumspeed_rpm/3.0 )*100)));
+    scrollbar_speed->setPos(simulator->GetDrumSpeed()/simulator->drumspeed_rpm_max*100);
 	text_speed = application->GetIGUIEnvironment()->addStaticText(
 					L"Conv.vel. [m/s]:", rect<s32>(710,40,800,40+20), false);
 
 	// ..add GUI checkmark to enable plotting forces
-	checkbox_plotforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,65+20),
+	checkbox_plotECSforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,65+20),
 					0, 105, L"Plot applied CES forces");
 
 	// ..add GUI checkmark to enable plotting forces
 	checkbox_plottrajectories = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,90, 560+150,90+20),
 					0, 106, L"Plot trajectories");
+
+    //editbox_ECSforces_scalefactor = application->GetIGUIEnvironment()->addEditBox(L"scale", core::rect<s32>(560, 115, 560 + 50, 115 + 20), true, nullptr, 103);
+    //text_ECSforces = application->GetIGUIEnvironment()->addStaticText(
+    //    L"ECS forces scalefactor", rect<s32>(560 + 70, 115, 560 + 70+ 90, 15 + 20), false);
 	
 
 }
@@ -54,28 +59,48 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 	if (event.EventType == EET_GUI_EVENT)
 	{
 		s32 id = event.GUIEvent.Caller->getID();
-		IGUIEnvironment* env = application->GetIGUIEnvironment();
+
+		//IGUIEnvironment* env = application->GetIGUIEnvironment();
 		switch(event.GUIEvent.EventType)
 		{
 		case EGET_SCROLL_BAR_CHANGED:
 				if (id == 101) // id of 'flow' slider..
 				{
 					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-					simulator->emitter.ParticlesPerSecond() = 1000* ((double)pos/25);
-					char message[50]; sprintf(message,"Flow %d [particl/s]", (int)simulator->emitter.ParticlesPerSecond());
+					//simulator->emitter.ParticlesPerSecond() = 1000* ((double)pos/25);
+					simulator->particle_flow = pos;
+					//char message[50]; sprintf(message,"Flow %d [particl/s]", (int)simulator->emitter.ParticlesPerSecond());
+					char message[50]; sprintf(message,"Flow %d [p/s]", static_cast<int>(simulator->particle_flow));
 					text_flow->setText(core::stringw(message).c_str());
 				}
 				if (id == 102) // id of 'speed' slider..
 				{
 					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-					simulator->drumspeed_rpm = 3.0* (((double)pos)/100);
-					simulator->drumspeed_radss = simulator->drumspeed_rpm*((2.0*CH_C_PI)/60.0); //[rad/s]
-					char message[50]; sprintf(message,"Drum rpm %2.2f [m/s]", simulator->drumspeed_rpm);
+                    simulator->SetDrumSpeed(pos * simulator->drumspeed_rpm_max/100);
+                    std::cout << "Drum speed: " << simulator->GetDrumSpeed() << " rpm" << std::endl;
+					char message[50]; sprintf(message,"Drum speed %2.2f [rpm]", simulator->drumspeed_rpm);
 					text_speed->setText(core::stringw(message).c_str());
 				}
 		break;
+
+        //case EGET_EDITBOX_ENTER:
+        //    if (id == 103)
+        //    {
+        //        simulator->ECSforces_scalefactor = atof(irr::core::stringc(((irr::gui::IGUIEditBox*)event.GUIEvent.Caller)->getText()).c_str());
+        //        break;
+        //    }
+        //    break;
+
+        default:
+            break;
 		}
+
+        
 	} 
+
+
+
+
 	// check if user presses keys
 	if (event.EventType == irr::EET_KEY_INPUT_EVENT && !event.KeyInput.PressedDown)
 	{
@@ -114,6 +139,7 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 			break;
 		}
 	}
+
 
 	return false;
 }

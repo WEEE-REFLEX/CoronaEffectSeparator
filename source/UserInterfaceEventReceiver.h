@@ -9,7 +9,7 @@
 
 
 // Forward declaration
-class SimulatorCES;
+class ElectrostaticCoronaSeparator;
 
 
 
@@ -17,21 +17,23 @@ class UserInterfaceEventReceiver : public irr::IEventReceiver
 {
 public:
 
-	UserInterfaceEventReceiver(chrono::irrlicht::ChIrrAppInterface* myapp, SimulatorCES* mysimulator);
+	UserInterfaceEventReceiver(chrono::irrlicht::ChIrrAppInterface* myapp, ElectrostaticCoronaSeparator* mysimulator);
 
-	bool OnEvent(const irr::SEvent& event);
+	bool OnEvent(const irr::SEvent& event) override;
 
 private: 
 	chrono::irrlicht::ChIrrAppInterface* application;
-	SimulatorCES* simulator;
+    ElectrostaticCoronaSeparator* simulator;
 
 public:
 	irr::gui::IGUIScrollBar*  scrollbar_flow;
 	irr::gui::IGUIStaticText* text_flow;
 	irr::gui::IGUIScrollBar*  scrollbar_speed;
 	irr::gui::IGUIStaticText* text_speed;
-	irr::gui::IGUICheckBox*	checkbox_plotforces;
+	irr::gui::IGUICheckBox*	checkbox_plotECSforces;
 	irr::gui::IGUICheckBox*	checkbox_plottrajectories;
+    //irr::gui::IGUIEditBox* editbox_ECSforces_scalefactor;
+    //irr::gui::IGUIStaticText* text_ECSforces;
 };
 
 

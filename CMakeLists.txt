@@ -1,7 +1,7 @@
 #--------------------------------------------------------------
 # 
 # Example of CMake configuration file to build an external 
-# project depending on Chrono and on optionam Chrono modules.
+# project depending on Chrono and on optional Chrono modules.
 # 
 # This minimal sample project can be used as a template for a
 # user project.  Modify sections 1, 2, and 3 below as appropriate.
@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 2.8)
 # Modify the project name if you want: 
 #--------------------------------------------------------------
 
-project(CoronaElectrostaticSeparator)
+project(ecs_particlescan)
 
 #--------------------------------------------------------------
 # === 2 ===
@@ -59,7 +59,7 @@ project(CoronaElectrostaticSeparator)
 #--------------------------------------------------------------
 
 find_package(Chrono
-             COMPONENTS Irrlicht Postprocess Python
+             COMPONENTS Irrlicht postprocess
              CONFIG)
 
 #--------------------------------------------------------------
@@ -67,7 +67,7 @@ find_package(Chrono
 #--------------------------------------------------------------
 
 if (NOT Chrono_FOUND)
-  message("Could not find requirements for projects")
+  message("Could not find Chrono or one of its required modules")
   return()
 endif()
 
@@ -80,34 +80,37 @@ endif()
 include_directories(${CHRONO_INCLUDE_DIRS})
 
 #--------------------------------------------------------------
+# Tweaks to disable some warnings with MSVC
+#--------------------------------------------------------------
+if(MSVC)
+    add_definitions("-D_CRT_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
+    add_definitions("-D_SCL_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
+    set(EXTRA_COMPILE_FLAGS "/wd4275")             # disable warnings triggered by Irrlicht
+else()
+    set(EXTRA_COMPILE_FLAGS "")
+endif()
+
+#--------------------------------------------------------------
 # === 3 ===
 # Add the executable from your project and specify all C++ 
 # files in your project. 
 #--------------------------------------------------------------
 
-add_executable(conveyor 
-				source/conveyor_Ida.cpp
-				source/SimulatorCES.h				
+add_executable(ecs_particlescan
+				source/main.cpp
+				# source/conveyor.cpp
+				# source/SimulatorCES.h				
 				source/UserInterfaceEventReceiver.cpp
 				source/UserInterfaceEventReceiver.h
-				source/ElectricParticleProperty.h
-				source/ElectricForcesCES.h
+				source/ElectricParticleAssets.h
+				source/ElectrostaticCoronaSeparator.h
+				source/ElectrostaticCoronaSeparator.cpp
 				source/ProcessFlow.h
-				source/ParserEmitter.h
-				source/ParserElectricForcesCES.h
-				source/ParserChRandomShapeCreator.h
-				source/ParserChDistribution.h )
-
-#--------------------------------------------------------------
-#         Avoid logging too many warnings for the Irrlicht unit
-
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	SET(CHRONO_CSS_FLAGS "${CHRONO_CSS_FLAGS} -D_CRT_SECURE_NO_DEPRECATE" )  # avoids deprecation warnings
-    SET(CHRONO_CSS_FLAGS "${CHRONO_CSS_FLAGS} -D_SCL_SECURE_NO_DEPRECATE" )  # avoids deprecation warnings
-    SET(CHRONO_CSS_FLAGS "${CHRONO_CSS_FLAGS} -DNOMINMAX" ) # do not use MSVC's min/max macros
-	SET(CHRONO_CSS_FLAGS "${CHRONO_CSS_FLAGS} /wd4275")
-	SET(CHRONO_CSS_FLAGS "${CHRONO_CSS_FLAGS} /wd4996")
-ENDIF()
+				# source/ParserEmitter.h
+				# source/ParserElectricForcesCES.h
+				# source/ParserChRandomShapeCreator.h
+				# source/ParserChDistribution.h
+				)
 
 #--------------------------------------------------------------
 # Set properties for your executable target
@@ -118,18 +121,16 @@ ENDIF()
 # install tree (if using an installed version of Chrono).
 #--------------------------------------------------------------
 
-
-set_target_properties(conveyor PROPERTIES 
-	    COMPILE_FLAGS "${CHRONO_CSS_FLAGS}"
+set_target_properties(ecs_particlescan PROPERTIES 
+	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-	    LINK_FLAGS "${CHRONO_CSS_FLAGS}")
+	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
-		
 #--------------------------------------------------------------
 # Link to Chrono libraries and dependency libraries
 #--------------------------------------------------------------
 
-target_link_libraries(conveyor ${CHRONO_LIBRARIES})
+target_link_libraries(ecs_particlescan ${CHRONO_LIBRARIES})
 
 #--------------------------------------------------------------
 # === 4 (OPTIONAL) ===
@@ -144,6 +145,3 @@ target_link_libraries(conveyor ${CHRONO_LIBRARIES})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_DLL_copy_command("${CHRONO_DLLS}")
-
-
-

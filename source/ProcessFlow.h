@@ -1,7 +1,7 @@
 #ifndef PROCESSFLOW_H
 #define PROCESSFLOW_H
 
-#include "ElectricParticleProperty.h"
+#include "ElectricParticleAssets.h"
 #include "particlefactory/ChParticleProcessEvent.h"
 
 
@@ -21,39 +21,40 @@ namespace particlefactory {
 class ProcessFlow : public ChParticleProcessEvent
 {
 public:
-	ProcessFlow(int u_sects = 100, int v_sects = 100)
+    virtual ~ProcessFlow() { }
+
+    explicit ProcessFlow(int u_sects = 100, int v_sects = 100)
 	{
 		mmass_plastic.Reset(u_sects, v_sects);
 		mmass_metal.Reset(u_sects, v_sects);
 	}
 
 		/// Remove the particle from the system. 
-	virtual void ParticleProcessEvent(std::shared_ptr<ChBody> mbody, 
+    void ParticleProcessEvent(std::shared_ptr<ChBody> mbody, 
 									  ChSystem& msystem, 
-									  std::shared_ptr<ChParticleEventTrigger> mprocessor ) 
+									  std::shared_ptr<ChParticleEventTrigger> mprocessor ) override
 	{
 		if (auto mrectangleprocessor = std::dynamic_pointer_cast<ChParticleEventFlowInRectangle>(mprocessor))
 		{
 			// compute the row and colum of the matrix
-
 			int irow = (int)floor(mmass_plastic.GetRows() * mrectangleprocessor->last_intersectionUV.x);
 			if (irow >= mmass_plastic.GetRows()) irow = mmass_plastic.GetRows()-1;
 			int icol = (int)floor(mmass_plastic.GetColumns() * mrectangleprocessor->last_intersectionUV.y);
 			if (icol >= mmass_plastic.GetColumns()) icol = mmass_plastic.GetColumns()-1;
 
-			// Fetch the ElectricParticleProperty asset from the list
-			for (unsigned int na= 0; na< mbody->GetAssets().size(); na++)
+			// Fetch the ElectricParticleAsset asset from the list
+			for (size_t na= 0; na< mbody->GetAssets().size(); na++)
 			{
 				std::shared_ptr<ChAsset> myasset = mbody->GetAssetN(na);
-				if (auto electricproperties = std::dynamic_pointer_cast<ElectricParticleProperty>(myasset))
+				if (auto electricproperties = std::dynamic_pointer_cast<ElectricParticleAsset>(myasset))
 				{
 					// ok, its a particle!
 
-					if (electricproperties->material_type == ElectricParticleProperty::e_mat_plastic)
+					if (electricproperties->GetMaterial() == ElectricParticleAsset::material_type::e_mat_plastic)
 					{
 						this->mmass_plastic(irow,icol) += mbody->GetMass();
 					}
-					if (electricproperties->material_type == ElectricParticleProperty::e_mat_metal)
+					if (electricproperties->GetMaterial() == ElectricParticleAsset::material_type::e_mat_metal)
 					{
 						this->mmass_metal(irow,icol) += mbody->GetMass();
 					}
