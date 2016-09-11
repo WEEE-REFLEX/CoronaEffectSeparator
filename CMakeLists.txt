@@ -103,6 +103,7 @@ add_executable(ecs_particlescan
 				source/UserInterfaceEventReceiver.cpp
 				source/UserInterfaceEventReceiver.h
 				source/ElectricParticleAssets.h
+				source/ElectricParticleAssets.cpp
 				source/ElectrostaticCoronaSeparator.h
 				source/ElectrostaticCoronaSeparator.cpp
 				source/ProcessFlow.h

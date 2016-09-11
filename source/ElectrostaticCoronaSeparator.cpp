@@ -1014,7 +1014,7 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
                 DrawForces(application,ECSforces_scalefactor);
 
             if (receiver.checkbox_plottrajectories->isChecked())
-                DrawTrajectories(application,);
+                DrawTrajectories(application, true);
 
 
             //// Continuosly create debris that fall on the conveyor belt
@@ -1054,7 +1054,7 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
             // update the assets containing the trajectories, if any
             if (receiver.checkbox_plottrajectories->isChecked())
                 if (totframes % 20 == 0)
-                    UpdateTrajectories(application,);
+                    UpdateTrajectories(application, true);
 
             // Save data on file (each n integration steps, to avoid filling
             // the hard disk and to improve performance)
