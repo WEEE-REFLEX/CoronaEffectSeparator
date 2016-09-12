@@ -159,10 +159,10 @@ public:
     double surface_drum_spinning_friction = 0.0;
     double surface_drum_restitution = 0;
 
-    double surface_plate_friction = 0.2;
-    double surface_plate_rolling_friction = 0;
-    double surface_plate_spinning_friction = 0;
-    double surface_plate_restitution = 0;
+    double surface_conveyor_friction = 0;
+    double surface_conveyor_rolling_friction = 0;
+    double surface_conveyor_spinning_friction = 0;
+    double surface_conveyor_restitution = 0;
 
     std::shared_ptr<ChMaterialSurface> surface_particles;
 

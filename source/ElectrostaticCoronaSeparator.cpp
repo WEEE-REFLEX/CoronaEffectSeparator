@@ -489,8 +489,8 @@ void ElectrostaticCoronaSeparator::create_debris_particlescan(double particles_s
     mmaterial->SetFriction(0.4f);
     //mmaterial->SetImpactC(0.0f);
 
-    double xnozzle = -conveyor_length*0.1;
-    double ynozzle = drum_diameter;
+    double xnozzle = -conveyor_length*0.25;
+    double ynozzle = drum_diameter/2 + 0.1;
 
     //TODO: is it so critical the number of particles that has to be set with this bizarre method?
     double exact_particles_dt = mysystem.GetStep() * particles_second;
@@ -724,18 +724,23 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     emitter_positions->Outlet() = nozzle_csys;
     emitter_positions->Outlet().rot.Q_from_AngAxis(CH_C_PI_2, VECT_X); // rotate outlet 90° on x
 
-    auto mvisual = std::make_shared<ChColorAsset>();
-    mvisual->SetColor(ChColor(0.9f, 0.4f, 0.2f));
+    auto mvisual_orange = std::make_shared<ChColorAsset>();
+    mvisual_orange->SetColor(ChColor(0.9f, 0.4f, 0.2f));
+
+	auto mvisual_grey = std::make_shared<ChColorAsset>();
+	mvisual_grey->SetColor(ChColor(0.81f, 0.85f, 0.88f));
+
+	auto mvisual_bluegrey = std::make_shared<ChColorAsset>();
+	mvisual_bluegrey->SetColor(ChColor(0.33f, 0.69f, 0.97f));
 
     auto mtexture = std::make_shared<ChTexture>();
     mtexture->SetTextureFilename("cyltext.jpg");
-    GetLog() << CHRONO_DATA_DIR << "\n";
     
 
     // DRUM: rotating cylinder with electrostatic charge
     auto mrigidBodyDrum = std::make_shared<ChBodyEasyCylinder>(drum_diameter/2, drum_width, 7500, true, true);
     mrigidBodyDrum->SetNameString("drum");
-    mrigidBodyDrum->AddAsset(mvisual);
+    mrigidBodyDrum->AddAsset(mvisual_bluegrey);
     mrigidBodyDrum->GetMaterialSurface()->SetFriction(surface_drum_friction);
     mrigidBodyDrum->GetMaterialSurface()->SetRestitution(surface_drum_restitution);
     mrigidBodyDrum->GetMaterialSurface()->SetRollingFriction(surface_drum_rolling_friction);
@@ -754,11 +759,11 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     double conveyor_inclination = 10 * (CH_C_PI / 180);
     auto mrigidBodyConveyor = std::make_shared<ChBodyEasyBox>(conveyor_length, conveyor_thick, drum_width, true, true);
     mrigidBodyConveyor->SetNameString("conveyor");
-    mrigidBodyConveyor->AddAsset(mvisual);
-    mrigidBodyConveyor->GetMaterialSurface()->SetFriction(surface_plate_friction);
-    mrigidBodyConveyor->GetMaterialSurface()->SetRestitution(surface_plate_restitution);
-    mrigidBodyConveyor->GetMaterialSurface()->SetRollingFriction(surface_plate_rolling_friction);
-    mrigidBodyConveyor->GetMaterialSurface()->SetSpinningFriction(surface_plate_spinning_friction);
+    mrigidBodyConveyor->AddAsset(mvisual_grey);
+    mrigidBodyConveyor->GetMaterialSurface()->SetFriction(surface_conveyor_friction);
+    mrigidBodyConveyor->GetMaterialSurface()->SetRestitution(surface_conveyor_restitution);
+    mrigidBodyConveyor->GetMaterialSurface()->SetRollingFriction(surface_conveyor_rolling_friction);
+    mrigidBodyConveyor->GetMaterialSurface()->SetSpinningFriction(surface_conveyor_spinning_friction);
     mrigidBodyConveyor->SetPos(ChVector<>(-conveyor_length*cos(conveyor_inclination)/2, drum_diameter/2+conveyor_thick + conveyor_length*sin(conveyor_inclination)/2, 0));
     mrigidBodyConveyor->SetRot(ChQuaternion<>(sin(conveyor_inclination/2), 0, 0, cos(conveyor_inclination/2)));
     mrigidBodyConveyor->SetBodyFixed(true);
@@ -768,9 +773,9 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     mrigidBodyConveyor->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(3);
     
     // SPLITTERS: they intercept the particles that fall from the drum
-    auto mrigidBodySplitter1 = std::make_shared<ChBodyEasyBox>(0.01, drum_diameter/2, drum_diameter, 7500, splitters_collide, true);
+    auto mrigidBodySplitter1 = std::make_shared<ChBodyEasyBox>(0.005, drum_diameter/2, drum_diameter, 7500, splitters_collide, true);
     mrigidBodySplitter1->SetNameString("splitter01");
-    mrigidBodySplitter1->AddAsset(mvisual);
+    mrigidBodySplitter1->AddAsset(mvisual_orange);
     mrigidBodySplitter1->SetBodyFixed(true);
     mrigidBodySplitter1->GetMaterialSurface()->SetFriction(0.1f);
     mrigidBodySplitter1->SetPos(ChVector<>( 0.2, -(drum_diameter*0.5) - conveyor_thick / 2, 0));
@@ -780,10 +785,10 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     mrigidBodySplitter1->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
 
 
-    auto mrigidBodySplitter2 = std::make_shared<ChBodyEasyBox>(0.01, drum_diameter/2, drum_diameter, 7500, splitters_collide, true);
+    auto mrigidBodySplitter2 = std::make_shared<ChBodyEasyBox>(0.005, drum_diameter/2, drum_diameter, 7500, splitters_collide, true);
     mrigidBodySplitter2->SetNameString("splitter02");
     mrigidBodySplitter2->SetBodyFixed(true);
-    mrigidBodySplitter2->AddAsset(mvisual);
+    mrigidBodySplitter2->AddAsset(mvisual_orange);
     mrigidBodySplitter2->GetMaterialSurface()->SetFriction(0.1f);
     mrigidBodySplitter2->SetPos(ChVector<>( 0.4, -(drum_diameter*0.5) - conveyor_thick / 2, 0));
     system.AddBody(mrigidBodySplitter2);
@@ -945,38 +950,39 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
     // 
 
 
-    // Create also a ChParticleProcessor configured as a
-    // counter of particles that flow into a rectangle with a statistical distribution to plot:
-    //  -create the trigger:
-    double flowmeter_length = this->flowmeter_xmax - this->flowmeter_xmin;
-    auto distrrectangle = std::make_shared<ChParticleEventFlowInRectangle>(flowmeter_length, flowmeter_width);
-    distrrectangle->rectangle_csys = ChCoordsys<>(
-        drum_csys.pos + ChVector<>(this->flowmeter_xmin + 0.5 * flowmeter_length,
-                                   this->flowmeter_y,
-                                   0), // position of center rectangle
-        Q_from_AngAxis(-CH_C_PI_2, VECT_X)); // rotate rectangle so that its Z is up
-    distrrectangle->margin = 0.05;
-    //  -create the counter, with 20x10 resolution of sampling, on x y
-    //    This is defined in ProcessFlow.h and distinguishes plastic from metal
-    auto countdistribution = std::make_shared<ProcessFlow>(this->flowmeter_bins, 1);
-    //  -create the processor and plug in the trigger and the counter:
-    ChParticleProcessor processor_distribution;
-    processor_distribution.SetEventTrigger(distrrectangle);
-    processor_distribution.SetParticleEventProcessor(countdistribution);
+    //// Create also a ChParticleProcessor configured as a
+    //// counter of particles that flow into a rectangle with a statistical distribution to plot:
+    ////  -create the trigger:
+    //double flowmeter_length = this->flowmeter_xmax - this->flowmeter_xmin;
+    //auto distrrectangle = std::make_shared<ChParticleEventFlowInRectangle>(flowmeter_length, flowmeter_width);
+    //distrrectangle->rectangle_csys = ChCoordsys<>(
+    //    drum_csys.pos + ChVector<>(this->flowmeter_xmin + 0.5 * flowmeter_length,
+    //                               this->flowmeter_y,
+    //                               0), // position of center rectangle
+    //    Q_from_AngAxis(-CH_C_PI_2, VECT_X)); // rotate rectangle so that its Z is up
+    //distrrectangle->margin = 0.05;
+    ////  -create the counter, with 20x10 resolution of sampling, on x y
+    ////    This is defined in ProcessFlow.h and distinguishes plastic from metal
+    //auto countdistribution = std::make_shared<ProcessFlow>(this->flowmeter_bins, 1);
+    ////  -create the processor and plug in the trigger and the counter:
+    //ChParticleProcessor processor_distribution;
+    //processor_distribution.SetEventTrigger(distrrectangle);
+    //processor_distribution.SetParticleEventProcessor(countdistribution);
 
 
-    // Create a remover, i.e. an object that takes care 
-    // of removing particles that are inside or outside some volume.
-    // The fact that particles are handled with shared pointers means that,
-    // after they are removed from the ChSystem, they are also automatically
-    // deleted if no one else is referencing them.
-    auto distrrectangle2 = std::make_shared<ChParticleEventFlowInRectangle>(0.20, 0.30);
-    distrrectangle2->rectangle_csys = distrrectangle->rectangle_csys;
-    distrrectangle2->margin = 0.05;
-    std::shared_ptr<ChParticleProcessEventRemove> removal_event(new ChParticleProcessEventRemove);
-    ChParticleProcessor processor_remover;
-    processor_remover.SetEventTrigger(distrrectangle2);
-    processor_remover.SetParticleEventProcessor(removal_event);
+    //// Create a remover, i.e. an object that takes care 
+    //// of removing particles that are inside or outside some volume.
+    //// The fact that particles are handled with shared pointers means that,
+    //// after they are removed from the ChSystem, they are also automatically
+    //// deleted if no one else is referencing them.
+    //auto distrrectangle2 = std::make_shared<ChParticleEventFlowInRectangle>(0.20, 0.30);
+    //distrrectangle2->rectangle_csys = distrrectangle->rectangle_csys;
+    //distrrectangle2->margin = 0.05;
+
+    //std::shared_ptr<ChParticleProcessEventRemove> removal_event(new ChParticleProcessEventRemove);
+    //ChParticleProcessor processor_remover;
+    //processor_remover.SetEventTrigger(distrrectangle2);
+    //processor_remover.SetParticleEventProcessor(removal_event);
 
 
     // 
@@ -1043,10 +1049,10 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
             purge_debris_byposition(*application.GetSystem(), min_vector, max_vector);
 
             // Use the processor to count particle flow in the rectangle section:
-            processor_distribution.ProcessParticles(*application.GetSystem());
+            //processor_distribution.ProcessParticles(*application.GetSystem());
 
             // Continuosly check if some particle must be removed:
-            processor_remover.ProcessParticles(*application.GetSystem());
+            //processor_remover.ProcessParticles(*application.GetSystem());
 
             // Update the drum speed in the link
             drum_speed_function->Set_yconst(-drumspeed_rads);
@@ -1135,56 +1141,56 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
             } // end saving code
         }
 
-        // Just for fun, plot the distribution matrices, 
-        // i.e. countdistribution->mmass_plastic etc.
-        // In this case, normalize to integral , and scale on Z
-        double yscalefactor_plastic;
-        double totmass_plastic = 0;
-        for (int ir = 0; ir < countdistribution->mmass_plastic.GetRows(); ++ir)
-            for (int ic = 0; ic < countdistribution->mmass_plastic.GetColumns(); ++ic)
-                totmass_plastic += countdistribution->mmass_plastic(ir, ic);
-        if (totmass_plastic == 0)
-            yscalefactor_plastic = 0; // if not yet particle passed through sampling rectangle
-        else
-            yscalefactor_plastic = (0.002 * countdistribution->mmass_plastic.GetRows() * countdistribution->mmass_plastic.GetColumns()) / totmass_plastic;
+        //// Just for fun, plot the distribution matrices, 
+        //// i.e. countdistribution->mmass_plastic etc.
+        //// In this case, normalize to integral , and scale on Z
+        //double yscalefactor_plastic;
+        //double totmass_plastic = 0;
+        //for (int ir = 0; ir < countdistribution->mmass_plastic.GetRows(); ++ir)
+        //    for (int ic = 0; ic < countdistribution->mmass_plastic.GetColumns(); ++ic)
+        //        totmass_plastic += countdistribution->mmass_plastic(ir, ic);
+        //if (totmass_plastic == 0)
+        //    yscalefactor_plastic = 0; // if not yet particle passed through sampling rectangle
+        //else
+        //    yscalefactor_plastic = (0.002 * countdistribution->mmass_plastic.GetRows() * countdistribution->mmass_plastic.GetColumns()) / totmass_plastic;
 
-        drawDistribution(application.GetVideoDriver(),
-                         countdistribution->mmass_plastic * yscalefactor_plastic,
-                         distrrectangle->rectangle_csys,
-                         distrrectangle->Xsize,
-                         distrrectangle->Ysize,
-                         irr::video::SColor(255, 255, 0, 0));
+        //drawDistribution(application.GetVideoDriver(),
+        //                 countdistribution->mmass_plastic * yscalefactor_plastic,
+        //                 distrrectangle->rectangle_csys,
+        //                 distrrectangle->Xsize,
+        //                 distrrectangle->Ysize,
+        //                 irr::video::SColor(255, 255, 0, 0));
 
-        double yscalefactor_metal;
-        double totmass_metal = 0;
-        for (int ir = 0; ir < countdistribution->mmass_metal.GetRows(); ++ir)
-            for (int ic = 0; ic < countdistribution->mmass_metal.GetColumns(); ++ic)
-                totmass_metal += countdistribution->mmass_metal(ir, ic);
-        if (totmass_plastic == 0)
-            yscalefactor_metal = 0; // if not yet particle passed through sampling rectangle
-        else
-            yscalefactor_metal = (0.002 * countdistribution->mmass_metal.GetRows() * countdistribution->mmass_metal.GetColumns()) / totmass_metal;
+        //double yscalefactor_metal;
+        //double totmass_metal = 0;
+        //for (int ir = 0; ir < countdistribution->mmass_metal.GetRows(); ++ir)
+        //    for (int ic = 0; ic < countdistribution->mmass_metal.GetColumns(); ++ic)
+        //        totmass_metal += countdistribution->mmass_metal(ir, ic);
+        //if (totmass_plastic == 0)
+        //    yscalefactor_metal = 0; // if not yet particle passed through sampling rectangle
+        //else
+        //    yscalefactor_metal = (0.002 * countdistribution->mmass_metal.GetRows() * countdistribution->mmass_metal.GetColumns()) / totmass_metal;
 
-        drawDistribution(application.GetVideoDriver(),
-                         countdistribution->mmass_metal * yscalefactor_metal,
-                         distrrectangle->rectangle_csys,
-                         distrrectangle->Xsize,
-                         distrrectangle->Ysize,
-                         irr::video::SColor(255, 0, 255, 255));
+        //drawDistribution(application.GetVideoDriver(),
+        //                 countdistribution->mmass_metal * yscalefactor_metal,
+        //                 distrrectangle->rectangle_csys,
+        //                 distrrectangle->Xsize,
+        //                 distrrectangle->Ysize,
+        //                 irr::video::SColor(255, 0, 255, 255));
 
 
         application.GetVideoDriver()->endScene();
     }
 
-    // At the end ot the T max simulation time, 
-    // save output distributions to disk (non normalized for unit area/volume), 
-    // they can be a nxm matrix of 2d bins or a n-vector of 1d bins
-    GetLog() << "\n saving output distributions... \n ";
+    //// At the end ot the T max simulation time, 
+    //// save output distributions to disk (non normalized for unit area/volume), 
+    //// they can be a nxm matrix of 2d bins or a n-vector of 1d bins
+    //GetLog() << "\n saving output distributions... \n ";
 
-    ChStreamOutAsciiFile file_for_metal("out_distribution_metal.txt");
-    countdistribution->mmass_metal.StreamOUTdenseMatlabFormat(file_for_metal);
-    ChStreamOutAsciiFile file_for_plastic("out_distribution_plastic.txt");
-    countdistribution->mmass_plastic.StreamOUTdenseMatlabFormat(file_for_plastic);
+    //ChStreamOutAsciiFile file_for_metal("out_distribution_metal.txt");
+    //countdistribution->mmass_metal.StreamOUTdenseMatlabFormat(file_for_metal);
+    //ChStreamOutAsciiFile file_for_plastic("out_distribution_plastic.txt");
+    //countdistribution->mmass_plastic.StreamOUTdenseMatlabFormat(file_for_plastic);
 
 
     GetLog() << "\n Simulation Terminated. \n ";

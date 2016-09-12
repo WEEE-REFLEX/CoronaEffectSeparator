@@ -19,35 +19,40 @@ UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp,
 	// store pointer applicaiton
 	application = myapp;
 	simulator   = mysimulator;
+	char message[50];
 
-	// ..add a GUI slider to control particles flow
-	scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(
-					true, rect<s32>(560, 15, 700, 15+20), nullptr, 101);
+	int current_pos_x = screen_dim[0]*0.75 ;
+	int current_pos_y = screen_dim[0] * 0.01;
+	int unit_delta_x = screen_dim[0] * 0.1;
+    int delta_pos_y = screen_dim[1] * 0.025;
+
+	// Particles per second (slider)
+	scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(true, rect<s32>(current_pos_x, current_pos_y, current_pos_x + unit_delta_x, current_pos_y+0.9*delta_pos_y), nullptr, 101);
     scrollbar_flow->setMax(5000);
 	//scrollbar_flow->setPos(mysimulator->emitter.ParticlesPerSecond());
 	scrollbar_flow->setPos(simulator->particle_flow);
-	text_flow = application->GetIGUIEnvironment()->addStaticText(
-				L"Flow [particles/s]", rect<s32>(710,15,800,15+20), false);
+	sprintf(message, "Flow: %d [p/s]", static_cast<int>(simulator->particle_flow));
+	text_flow = application->GetIGUIEnvironment()->addStaticText(core::stringw(message).c_str(), rect<s32>(current_pos_x + 1.1*unit_delta_x, current_pos_y, current_pos_x + 3*unit_delta_x, current_pos_y + 0.9*delta_pos_y), false);
+	current_pos_y += delta_pos_y;
 
-	// ..add GUI slider to control the speed
-	scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(
-					true, rect<s32>(560, 40, 700, 40+20), nullptr, 102);
+	// Drum speed (slider)
+	scrollbar_speed = application->GetIGUIEnvironment()->addScrollBar(true, rect<s32>(current_pos_x, current_pos_y, current_pos_x + unit_delta_x, current_pos_y + 0.9*delta_pos_y), nullptr, 102);
 	scrollbar_speed->setMax(100); 
     scrollbar_speed->setPos(simulator->GetDrumSpeed()/simulator->drumspeed_rpm_max*100);
-	text_speed = application->GetIGUIEnvironment()->addStaticText(
-					L"Conv.vel. [m/s]:", rect<s32>(710,40,800,40+20), false);
+	message[50]; sprintf(message, "Drum speed %2.2f [rpm]", simulator->drumspeed_rpm);
+	text_speed = application->GetIGUIEnvironment()->addStaticText(core::stringw(message).c_str(), rect<s32>(current_pos_x + 1.1*unit_delta_x, current_pos_y, current_pos_x + 3 * unit_delta_x, current_pos_y + 0.9*delta_pos_y), false);
+	current_pos_y += delta_pos_y;
 
-	// ..add GUI checkmark to enable plotting forces
-	checkbox_plotECSforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,65, 560+150,65+20),
-					0, 105, L"Plot applied CES forces");
+	// Plot forces (check)
+	checkbox_plotECSforces = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(current_pos_x, current_pos_y, current_pos_x + 4*unit_delta_x, current_pos_y + 0.9*delta_pos_y),0, 105, L"Plot applied CES forces");
+	current_pos_y += delta_pos_y;
 
-	// ..add GUI checkmark to enable plotting forces
-	checkbox_plottrajectories = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(560,90, 560+150,90+20),
-					0, 106, L"Plot trajectories");
+	// Plot trajectories (check)
+	checkbox_plottrajectories = application->GetIGUIEnvironment()->addCheckBox(false,core::rect<s32>(current_pos_x, current_pos_y, current_pos_x + 4*unit_delta_x, current_pos_y + 0.9*delta_pos_y),0, 106, L"Plot trajectories");
+	current_pos_y += delta_pos_y;
 
     //editbox_ECSforces_scalefactor = application->GetIGUIEnvironment()->addEditBox(L"scale", core::rect<s32>(560, 115, 560 + 50, 115 + 20), true, nullptr, 103);
-    //text_ECSforces = application->GetIGUIEnvironment()->addStaticText(
-    //    L"ECS forces scalefactor", rect<s32>(560 + 70, 115, 560 + 70+ 90, 15 + 20), false);
+    //text_camera_pos = application->GetIGUIEnvironment()->addStaticText(L"ECS forces scalefactor", rect<s32>(560 + 70, 115, 560 + 70+ 90, 15 + 20), false);
 	
 
 }
@@ -66,16 +71,16 @@ bool UserInterfaceEventReceiver::OnEvent(const SEvent& event)
 		case EGET_SCROLL_BAR_CHANGED:
 				if (id == 101) // id of 'flow' slider..
 				{
-					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
+					s32 pos = static_cast<IGUIScrollBar*>(event.GUIEvent.Caller)->getPos();
 					//simulator->emitter.ParticlesPerSecond() = 1000* ((double)pos/25);
 					simulator->particle_flow = pos;
 					//char message[50]; sprintf(message,"Flow %d [particl/s]", (int)simulator->emitter.ParticlesPerSecond());
-					char message[50]; sprintf(message,"Flow %d [p/s]", static_cast<int>(simulator->particle_flow));
+					char message[50]; sprintf(message,"Flow: %d [p/s]", static_cast<int>(simulator->particle_flow));
 					text_flow->setText(core::stringw(message).c_str());
 				}
 				if (id == 102) // id of 'speed' slider..
 				{
-					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
+					s32 pos = static_cast<IGUIScrollBar*>(event.GUIEvent.Caller)->getPos();
                     simulator->SetDrumSpeed(pos * simulator->drumspeed_rpm_max/100);
                     std::cout << "Drum speed: " << simulator->GetDrumSpeed() << " rpm" << std::endl;
 					char message[50]; sprintf(message,"Drum speed %2.2f [rpm]", simulator->drumspeed_rpm);
