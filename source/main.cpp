@@ -13,23 +13,9 @@
 
 
 #include "ElectrostaticCoronaSeparator.h"
-
-// Use the namespace of Chrono
+#include "SerialComm.h"
 
 using namespace chrono;
-using namespace postprocess;
-
-// Use the main namespaces of Irrlicht
-using namespace irr;
-using namespace core;
-using namespace scene;
-using namespace video;
-using namespace io;
-using namespace gui;
-using namespace std;
-
-
-
 
 
 int main(int argc, char* argv[])
@@ -38,22 +24,11 @@ int main(int argc, char* argv[])
     SetChronoDataPath(CHRONO_DATA_DIR);
 
     GetLog() << "Executing simulator \n";
-    // If the .exe is launched normally, by default it will parse the settings-file below, 
-    // otherwise the user can launch it by command-line by passing the filename as argument.
-    //std::string ces_settings_filename("../CAD_conveyor/settings.ces");
 
-    //if (argc == 2)
-    //    ces_settings_filename = argv[1];
-
-    // Create the Irrlicht visualization (open the Irrlicht device, 
-    // bind a simple user interface, etc. etc.)
     ChSystem mphysicalSystem;
     irrlicht::ChIrrApp application(&mphysicalSystem, L"Conveyor belt", irr::core::dimension2d<irr::u32>(800, 600), false);
 
-    bool irr_cast_shadows = true;
-
-    // Change default font to something better
-    //application.SetFonts("../objects/fonts/arial8.xml");
+    auto irr_cast_shadows = true;
 
     // Easy shortcuts to add camera, lights, logo and sky in Irrlicht scene:
     application.AddTypicalLogo();
@@ -69,17 +44,35 @@ int main(int argc, char* argv[])
     application.GetSystem()->SetIntegrationType(ChSystem::INT_ANITESCU);
     application.GetSystem()->SetSolverType(ChSystem::SOLVER_SOR_MULTITHREAD);// SOLVER_SOR_MULTITHREAD or SOLVER_BARZILAIBORWEIN for max precision
 
+    //try{
+    //    CallbackAsyncSerial prova("COM15", 115200);
+    //    char* ciao = "ciao ins\n";
+    //    prova.write(ciao, 9);
+    //}
+    //catch(...)
+    //{
+    //    std::cout << "bad done" << std::endl;
+    //}
+
+    //CallbackAsyncSerial prova("COM15", 115200);
+    //char* ciao = "ciao out\n";
+    //prova.write(ciao, 9);
+    //prova.close();
+
+    
 
     try
     {
         // Create a simulator object
         ElectrostaticCoronaSeparator separator(*application.GetSystem());
+        EcsSerialCommunicator serial("COM15",115200);
+        separator.BindToEcsSerialCommunicator(serial);
 
         //// Load settings from file, if any
         //separator.ParseSettings(ces_settings_filename.c_str());
         separator.Setup(*application.GetSystem(), &application);
-        separator.LoadParticleScan("C:\\workspace\\ecs_particlescan\\input\\particlescan\\geometric_list-CU.txt");
-        separator.LoadParticleScan("C:\\workspace\\ecs_particlescan\\input\\particlescan\\geometric_list-PCB.txt");
+        separator.LoadParticleScan("C:\\workspace\\ces\\input\\particlescan\\geometric_list-CU.txt");
+        separator.LoadParticleScan("C:\\workspace\\ces\\input\\particlescan\\geometric_list-PCB.txt");
         // Initialize and execute the simulation
         separator.RunSimulation(application);
 

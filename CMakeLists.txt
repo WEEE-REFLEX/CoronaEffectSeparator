@@ -77,7 +77,21 @@ endif()
 # of the requested modules.
 #--------------------------------------------------------------
 
-include_directories(${CHRONO_INCLUDE_DIRS})
+include_directories()
+
+## Link libraries
+set(Boost_USE_STATIC_LIBS        OFF) # only find static libs
+set(Boost_USE_MULTITHREADED      ON)
+set(Boost_USE_STATIC_RUNTIME    OFF)
+
+set(BOOST_LIBS thread date_time system)
+find_package(Boost COMPONENTS ${BOOST_LIBS} REQUIRED)
+find_package(Threads REQUIRED)
+
+MESSAGE(STATUS "Boost_FOUND is ${Boost_FOUND}")
+MESSAGE(STATUS "Boost_INCLUDE_DIRS is ${Boost_INCLUDE_DIRS}")
+MESSAGE(STATUS "Boost_LIBRARY_DIRS is ${Boost_LIBRARY_DIRS}")
+MESSAGE(STATUS "Boost_LIBRARIES is ${Boost_LIBRARIES}")
 
 #--------------------------------------------------------------
 # Tweaks to disable some warnings with MSVC
@@ -105,6 +119,9 @@ add_executable(ecs_particlescan
 				source/ElectrostaticCoronaSeparator.h
 				source/ElectrostaticCoronaSeparator.cpp
 				source/ProcessFlow.h
+				source/AsyncSerial.h
+				source/AsyncSerial.cpp
+				source/SerialComm.h
 				)
 
 #--------------------------------------------------------------
@@ -115,17 +132,16 @@ add_executable(ecs_particlescan
 # source tree (if using a build version of Chrono), or in its
 # install tree (if using an installed version of Chrono).
 #--------------------------------------------------------------
+include_directories(${CHRONO_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+add_definitions(-DBOOST_ALL_NO_LIB)
+target_link_libraries(ecs_particlescan ${CHRONO_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 set_target_properties(ecs_particlescan PROPERTIES 
 	    COMPILE_FLAGS "${CHRONO_CXX_FLAGS} ${EXTRA_COMPILE_FLAGS}"
 	    COMPILE_DEFINITIONS "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
 	    LINK_FLAGS "${CHRONO_LINKER_FLAGS}")
 
-#--------------------------------------------------------------
-# Link to Chrono libraries and dependency libraries
-#--------------------------------------------------------------
 
-target_link_libraries(ecs_particlescan ${CHRONO_LIBRARIES})
 
 #--------------------------------------------------------------
 # === 4 (OPTIONAL) ===

@@ -29,8 +29,10 @@
 //#include "ParserEmitter.h"
 //#include "ParserElectricForcesCES.h"
 //#include "ProcessFlow.h"
+#include "AsyncSerial.h"
 
 
+class EcsSerialCommunicator;
 using namespace chrono;
 using namespace particlefactory;
 
@@ -53,69 +55,7 @@ class ElectrostaticCoronaSeparator
 { 
 
 private:
-
-    class ParticleBucket
-    {
-    private:
-        ChCoordsys<double> plane_csys {{0,0,0},{1,0,0,0}};
-        double x_semi_width = 1;
-        double z_semi_width = 1;
-
-        
-    public:
-        size_t particle_caught = 0;
-
-        ParticleBucket(const ChCoordsys<double> csys, double x_width, double z_width): plane_csys(csys), x_semi_width(x_width/2), z_semi_width(z_width/2) {}
-        ~ParticleBucket(){}
-
-        bool IsCaught(const ChBody& body, bool count_catches = true)
-        {
-            auto local_pos = plane_csys.TransformPointParentToLocal(body.GetCoord().pos);
-
-            if (local_pos(1) < 0 &&
-                local_pos(0) < x_semi_width && local_pos(0) > -x_semi_width &&
-                local_pos(2) < z_semi_width && local_pos(2) > -z_semi_width
-                )
-            {
-                if (count_catches)
-                    ++particle_caught;
-                return true;
-            }
-
-
-            return false;
-        }
-
-        void CatchIf(ChSystem& mysystem, bool f(ChBody&) )
-        {
-            for (auto body_sel = 0; body_sel < mysystem.Get_bodylist()->size(); ++body_sel)
-            {
-                auto body = (*mysystem.Get_bodylist())[body_sel];
-
-                if (IsCaught(*body, true) && f(*body))
-                {
-                    mysystem.Remove(body);
-                }
-
-            }
-        }
-
-        void SetBucket(const ChVector<>& plane_center_position, const ChQuaternion<>& plane_orientation = ChQuaternion<>(1,0,0,0))
-        {
-            plane_csys.pos = plane_center_position;
-            plane_csys.rot = plane_orientation;
-        }
-
-        void SetWidth(double x_width, double z_width)
-        {
-            x_semi_width = x_width / 2;
-            z_semi_width = z_width / 2;
-        }
-
-        ChCoordsys<>& GetBucketCoordsys() { return plane_csys; }
-
-    };
-
+    EcsSerialCommunicator* serial_communicator = nullptr;
 
     double h1 = 0;
     double h2 = 0;
@@ -123,6 +63,16 @@ private:
     double f = 0;
 
 public:
+
+    struct splitter_t
+    {
+        splitter_t(double position_x = 0, double position_y = 0) :pos_x(position_x), pos_y(position_y) {}
+        double pos_x = -1;
+        double pos_y = -1;
+        bool status_ok = true;
+    };
+
+    std::array<splitter_t, 3> splitters;
 
 	// data for this type of asset 
 	double drum_diameter = 0.320;
@@ -147,7 +97,6 @@ public:
     //double drumspeed_rpm = 44.8; // [rpm]
     const double drumspeed_rpm_max = 100;
     double drumspeed_rpm = 70.4; // [rpm]
-    double drumspeed_rads = drumspeed_rpm*(CH_C_2PI / 60.0); //[rad/s]
 
     std::shared_ptr<ChFunction_Const> drum_speed_function;
 
@@ -190,12 +139,14 @@ public:
     double Tmax = 5;
     bool splitters_collide = true;
 
-    std::list<ParticleBucket> buckets;
-
     std::vector<std::shared_ptr<ChBody>> scanned_particles;
 
 
+
+    /****************** member functions ********************/
+
     ElectrostaticCoronaSeparator(ChSystem& mphysicalSystem);
+    ~ElectrostaticCoronaSeparator(){}
 
 
     ///
@@ -204,7 +155,7 @@ public:
     void apply_forces(ChSystem* msystem);
 
     /// Acquire particles information based on text file given by the spectrophotometric camera.
-    bool LoadParticleScan(const char* filename);
+    bool LoadParticleScan(std::string filename);
 
     /// Creates random bodies according to the last scan.
     void create_debris_particlescan(double particles_second,
@@ -236,14 +187,13 @@ public:
     /// by running the loop of time integration
     int RunSimulation(irrlicht::ChIrrApp& application);
 
+    /// Connect the simulator with a real controller to which send data.
+    /// The EcsSerialCommunicator is optional and must be configured apart.
+    void BindToEcsSerialCommunicator(EcsSerialCommunicator& serial_comm) { serial_communicator = &serial_comm; }
+
     static ElectricParticleAsset::material_type getElectricParticleProperty_material_type(int matID);
 
-    void SetDrumSpeed(double speed_rpm)
-    {
-        drumspeed_rpm = speed_rpm;
-        drumspeed_rads = drumspeed_rpm*CH_C_2PI / 60;
-    }
-
+    void SetDrumSpeed(double speed_rpm) { drumspeed_rpm = speed_rpm; }
     double GetDrumSpeed() const { return drumspeed_rpm; }
 
 
