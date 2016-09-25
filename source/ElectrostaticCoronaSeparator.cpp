@@ -400,7 +400,7 @@ bool ElectrostaticCoronaSeparator::LoadParticleScan(const char* filename)
     {
         std::istringstream iss(line);
         std::string field;
-        size_t mat_ID, particle_ID, convex_hull_Npoint;
+        int mat_ID, particle_ID, convex_hull_Npoint;
         double thickness, particle_mass, I1, I2, I3;
         std::vector<ChVector<double>> convex_hull_points;
 
@@ -465,7 +465,7 @@ bool ElectrostaticCoronaSeparator::LoadParticleScan(const char* filename)
             // create body
             auto convex_hull_temp = std::make_shared<ChBodyEasyConvexHull>(convex_hull_points, basic_elec_asset->GetDensity(), true, true);
             convex_hull_temp->SetMass(particle_mass);
-            convex_hull_temp->SetInertiaXX(ChVector<>(I1, I2, I3));
+            convex_hull_temp->SetInertiaXX(ChVector<>(I1, I2, I3)); // the inertia is overwritten with the input value
             convex_hull_temp->AddAsset(basic_elec_asset);
 
             scanned_particles.push_back(convex_hull_temp);
@@ -531,9 +531,16 @@ void ElectrostaticCoronaSeparator::create_debris_particlescan(double particles_s
         mrigidBody->AddAsset(elec_asset->GetDefaultColorAsset()); //share the default asset with all the bodies of the same material
         
         mrigidBody->SetPos(ChVector<>((ChRandom() - 0.5) * xnozzlesize + xnozzle, ynozzle + i * 0.005, (ChRandom() - 0.5) * znozzlesize));
+		std::srand(std::time(0));
+		ChVector<double> vect = { static_cast<double>(std::rand())/RAND_MAX, static_cast<double>(std::rand()) / RAND_MAX, static_cast<double>(std::rand()) / RAND_MAX }; vect.Normalize();
+		double alpha = static_cast<double>(std::rand()) / RAND_MAX*CH_C_PI_2;
+		ChQuaternion<double> q = { cos(alpha),vect(0)*sin(alpha),vect(1)*sin(alpha),vect(2)*sin(alpha) };
+
+
+        mrigidBody->SetRot(q);
         mrigidBody->SetMaterialSurface(mmaterial);
 
-         auto traj_asset = std::make_shared<ParticleTrajectory>();
+        auto traj_asset = std::make_shared<ParticleTrajectory>();
         mrigidBody->AddAsset(traj_asset);
 
         mysystem.AddBody(mrigidBody);
@@ -741,10 +748,10 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     auto mrigidBodyDrum = std::make_shared<ChBodyEasyCylinder>(drum_diameter/2, drum_width, 7500, true, true);
     mrigidBodyDrum->SetNameString("drum");
     mrigidBodyDrum->AddAsset(mvisual_bluegrey);
-    mrigidBodyDrum->GetMaterialSurface()->SetFriction(surface_drum_friction);
-    mrigidBodyDrum->GetMaterialSurface()->SetRestitution(surface_drum_restitution);
-    mrigidBodyDrum->GetMaterialSurface()->SetRollingFriction(surface_drum_rolling_friction);
-    mrigidBodyDrum->GetMaterialSurface()->SetSpinningFriction(surface_drum_spinning_friction);
+    mrigidBodyDrum->GetMaterialSurface()->SetFriction(0.5);
+    mrigidBodyDrum->GetMaterialSurface()->SetRestitution(0);
+    mrigidBodyDrum->GetMaterialSurface()->SetRollingFriction(0);
+    mrigidBodyDrum->GetMaterialSurface()->SetSpinningFriction(0);
     mrigidBodyDrum->SetPos(ChVector<>(0,0,0));
     //mrigidBodyDrum->SetPos(ChVector<>(conveyor_length / 2, -(drum_diameter*0.5) - conveyor_thick / 2, 0));
     mrigidBodyDrum->SetRot(ChQuaternion<>(sin(CH_C_PI_4), cos(CH_C_PI_4), 0 , 0));
@@ -760,11 +767,11 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     auto mrigidBodyConveyor = std::make_shared<ChBodyEasyBox>(conveyor_length, conveyor_thick, drum_width, true, true);
     mrigidBodyConveyor->SetNameString("conveyor");
     mrigidBodyConveyor->AddAsset(mvisual_grey);
-    mrigidBodyConveyor->GetMaterialSurface()->SetFriction(surface_conveyor_friction);
-    mrigidBodyConveyor->GetMaterialSurface()->SetRestitution(surface_conveyor_restitution);
-    mrigidBodyConveyor->GetMaterialSurface()->SetRollingFriction(surface_conveyor_rolling_friction);
-    mrigidBodyConveyor->GetMaterialSurface()->SetSpinningFriction(surface_conveyor_spinning_friction);
-    mrigidBodyConveyor->SetPos(ChVector<>(-conveyor_length*cos(conveyor_inclination)/2, drum_diameter/2+conveyor_thick + conveyor_length*sin(conveyor_inclination)/2, 0));
+    mrigidBodyConveyor->GetMaterialSurface()->SetFriction(0); // it was 0.2
+    mrigidBodyConveyor->GetMaterialSurface()->SetRestitution(0);
+    mrigidBodyConveyor->GetMaterialSurface()->SetRollingFriction(0);
+    mrigidBodyConveyor->GetMaterialSurface()->SetSpinningFriction(0);
+    mrigidBodyConveyor->SetPos(ChVector<>(-conveyor_length/2*cos(conveyor_inclination)+conveyor_thick/2*sin(conveyor_inclination), drum_diameter/2+conveyor_thick/2* cos(conveyor_inclination) + conveyor_length/2*sin(conveyor_inclination), 0));
     mrigidBodyConveyor->SetRot(ChQuaternion<>(sin(conveyor_inclination/2), 0, 0, cos(conveyor_inclination/2)));
     mrigidBodyConveyor->SetBodyFixed(true);
     system.AddBody(mrigidBodyConveyor);
@@ -1012,6 +1019,8 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
         if (!application.GetPaused())
         {
             totframes++;
+
+			//GetLog() << "WOT: " << application.GetSystem()->GetChTime() << "\n";
 
             // Apply the forces caused by electrodes of the CES machine
             apply_forces(application.GetSystem());

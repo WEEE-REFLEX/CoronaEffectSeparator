@@ -5,7 +5,6 @@
 // from the GUI graphical user interface
 
 #include "chrono_irrlicht/CHirrApp.h"
-#include <array>
 
 
 // Forward declaration
@@ -25,7 +24,6 @@ private:
 	chrono::irrlicht::ChIrrAppInterface* application;
     ElectrostaticCoronaSeparator* simulator;
 
-	std::array<int, 2> screen_dim = {1200, 900};
 
 public:
 	irr::gui::IGUIScrollBar*  scrollbar_flow;

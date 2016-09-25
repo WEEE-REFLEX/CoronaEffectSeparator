@@ -21,10 +21,12 @@ UserInterfaceEventReceiver::UserInterfaceEventReceiver(ChIrrAppInterface* myapp,
 	simulator   = mysimulator;
 	char message[50];
 
-	int current_pos_x = screen_dim[0]*0.75 ;
-	int current_pos_y = screen_dim[0] * 0.01;
-	int unit_delta_x = screen_dim[0] * 0.1;
-    int delta_pos_y = screen_dim[1] * 0.025;
+	auto scr_sz = application->GetVideoDriver()->getScreenSize();
+
+	int current_pos_x = scr_sz.Width*0.75 ;
+	int current_pos_y = scr_sz.Width * 0.01;
+	int unit_delta_x = scr_sz.Width * 0.1;
+    int delta_pos_y = scr_sz.Height * 0.025;
 
 	// Particles per second (slider)
 	scrollbar_flow = application->GetIGUIEnvironment()->addScrollBar(true, rect<s32>(current_pos_x, current_pos_y, current_pos_x + unit_delta_x, current_pos_y+0.9*delta_pos_y), nullptr, 101);

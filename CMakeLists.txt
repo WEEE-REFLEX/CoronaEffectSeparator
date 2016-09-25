@@ -97,9 +97,7 @@ endif()
 #--------------------------------------------------------------
 
 add_executable(ecs_particlescan
-				source/main.cpp
-				# source/conveyor.cpp
-				# source/SimulatorCES.h				
+				source/main.cpp			
 				source/UserInterfaceEventReceiver.cpp
 				source/UserInterfaceEventReceiver.h
 				source/ElectricParticleAssets.h
@@ -107,10 +105,6 @@ add_executable(ecs_particlescan
 				source/ElectrostaticCoronaSeparator.h
 				source/ElectrostaticCoronaSeparator.cpp
 				source/ProcessFlow.h
-				# source/ParserEmitter.h
-				# source/ParserElectricForcesCES.h
-				# source/ParserChRandomShapeCreator.h
-				# source/ParserChDistribution.h
 				)
 
 #--------------------------------------------------------------

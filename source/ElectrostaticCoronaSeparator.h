@@ -128,6 +128,8 @@ public:
 	double drum_diameter = 0.320;
 	double drum_width = 0.3;
 	double electrode_diameter = 0.038;
+
+	// electric features
 	double U = -35000; // supplied high-voltage [v]
 	double L = 0.267; //certer distance of rotating roll electrode and electrostatic pole *****ida
 	double alpha = (CH_C_PI / 180) * 30; //angle of horizontal line and electrodes center line *****ida
@@ -144,25 +146,10 @@ public:
 
     //double drumspeed_rpm = 44.8; // [rpm]
     const double drumspeed_rpm_max = 100;
-    double drumspeed_rpm = 50; // [rpm]
+    double drumspeed_rpm = 70.4; // [rpm]
     double drumspeed_rads = drumspeed_rpm*(CH_C_2PI / 60.0); //[rad/s]
 
     std::shared_ptr<ChFunction_Const> drum_speed_function;
-
-    //sphrad = 0.38e-3;
-    //sphrad2 = 0.25e-3;
-    //sphrad3 = 0.794e-3;
-
-    // material surfaces
-    double surface_drum_friction = 0.5;
-    double surface_drum_rolling_friction = 0.0;
-    double surface_drum_spinning_friction = 0.0;
-    double surface_drum_restitution = 0;
-
-    double surface_conveyor_friction = 0;
-    double surface_conveyor_rolling_friction = 0;
-    double surface_conveyor_spinning_friction = 0;
-    double surface_conveyor_restitution = 0;
 
     std::shared_ptr<ChMaterialSurface> surface_particles;
 
@@ -185,23 +172,8 @@ public:
     const double conveyor_thick = 0.01;
     const double conveyor_length = 0.6;
 
-    //ChCoordsys<> conveyor_csys{ 0, -conveyor_thick, 0 };
-    //ChCoordsys<> drum_csys{ conveyor_length / 2, -(0.320*0.5) - conveyor_thick / 2, 0 };
-
-    //ChCoordsys<> nozzle_csys{ 0, 0.01, 0 };
-    //ChCoordsys<> splitter1_csys{ conveyor_length / 2 + 0.2, -(0.320*0.5) - conveyor_thick / 2,0 };
-    //ChCoordsys<> splitter2_csys{ conveyor_length / 2 + 0.4, -(0.320*0.5) - conveyor_thick / 2,0 };
-    //ChCoordsys<> brush_csys{ conveyor_length / 2 - 0.10, -(0.320*0.5) - conveyor_thick / 2,0 };
-
-
-    //ChCoordsys<> conveyor_csys;
     ChCoordsys<> drum_csys;
-
     ChCoordsys<> nozzle_csys;
-    //ChCoordsys<> splitter1_csys;
-    //ChCoordsys<> splitter2_csys;
-    //ChCoordsys<> brush_csys;
-
 
     // set as true for saving log files each n frames
     bool save_dataset = false;
