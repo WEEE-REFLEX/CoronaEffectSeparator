@@ -3,7 +3,12 @@
 #include <string>
 #include "SerialComm.h"
 
-void drawDistribution(irr::video::IVideoDriver* driver, const ChMatrix<>& Z, const ChCoordsys<>& mpos, double x_size, double y_size, irr::video::SColor mcol, bool use_Zbuffer)
+void drawDistribution(irr::video::IVideoDriver* driver,
+                      const ChMatrix<>& Z,
+                      const ChCoordsys<>& mpos,
+                      double x_size, double y_size,
+                      irr::video::SColor mcol,
+                      bool use_Zbuffer = true)
 {
     driver->setTransform(irr::video::ETS_WORLD, irr::core::matrix4());
     irr::video::SMaterial mattransp;
@@ -48,34 +53,31 @@ void drawDistribution(irr::video::IVideoDriver* driver, const ChMatrix<>& Z, con
     }
 }
 
+template <typename asset_type = ElectricParticleAsset>
+bool GetAsset(const std::shared_ptr<ChBody>& body, std::shared_ptr<asset_type>& desired_asset)
+{
+    for (auto asset_iter = body->GetAssets().begin(); asset_iter != body->GetAssets().end(); ++asset_iter)
+    {
+        auto desired_asset_ptr = std::dynamic_pointer_cast<asset_type>(*asset_iter);
+        if (desired_asset_ptr)
+        {
+            desired_asset = desired_asset_ptr;
+            return true;
+        }
+    }
+    return false;
+}
+
+
 ElectrostaticCoronaSeparator::ElectrostaticCoronaSeparator(ChSystem& mphysicalSystem)
 {
-
-
-
-    surface_particles = std::make_shared<ChMaterialSurface>();
-    surface_particles->SetFriction(0.2f);
-    surface_particles->SetRollingFriction(0);
-    surface_particles->SetSpinningFriction(0);
-    surface_particles->SetRestitution(0);
-
-
-    // Init coordinate systems with position and rotation of important items in the 
-    // simulator. These are initializad with constant values, but if loading the
-    // SolidWorks model, they will be changed accordingly to what is found in the CAD 
-    // file (see later, where the SolidWorks model is parsed).
-
-    //***ALEX disabled because initialized by SolidWorks file, anyway
-    //double conveyor_thick = 0.01;
-    //double conveyor_length = 0.6;
-
-    //conveyor_csys	= ChCoordsys<>( ChVector<>(0, -conveyor_thick, 0)) ; // default position
-    //drum_csys		= ChCoordsys<>( ChVector<>(conveyor_length/2, -(drum_diameter*0.5)-conveyor_thick/2,0), ChQuaternion<>(sin(CH_C_PI_2),0, cos(CH_C_PI_2),0) );  // default position
-    //nozzle_csys		= ChCoordsys<>( ChVector<>(0, 0.01, 0) ); // default position
-    //splitter1_csys	= ChCoordsys<>( ChVector<>(conveyor_length/2+0.2, -(drum_diameter*0.5)-conveyor_thick/2,0) );  // default position
-    //splitter2_csys	= ChCoordsys<>( ChVector<>(conveyor_length/2+0.4, -(drum_diameter*0.5)-conveyor_thick/2,0) );  // default position
-    //brush_csys	    = ChCoordsys<>( ChVector<>(conveyor_length/2-0.10, -(drum_diameter*0.5)-conveyor_thick/2,0) );  // default position
-
+    // Initialize splitter positions
+    splitters[0].pos_x = 0.1;
+    splitters[1].pos_x = 0.2;
+    splitters[2].pos_x = 0.3;
+    splitters[0].pos_y = 0;
+    splitters[1].pos_y = 0;
+    splitters[2].pos_y = 0;
 
 
     // Set small collision envelopes for objects that will be created from now on..
@@ -87,138 +89,6 @@ ElectrostaticCoronaSeparator::ElectrostaticCoronaSeparator(ChSystem& mphysicalSy
     // Important! dt is small, and particles are small, so it's better to keep this small...
     mphysicalSystem.SetMaxPenetrationRecoverySpeed(0.15);// not needed in INT_TASORA, only for INT_ANITESCU
     mphysicalSystem.SetMinBounceSpeed(0.1);
-
-
-    // In the following there is a default initialization of the 
-    // particle creation system, based on ChParticleEmitter. 
-    // This is a default configuration, that is _overridden_ if you 
-    // call ParseSettings() and load a settings.ces file that contain different
-    // configurations for the emitter.
-
-    // ---Initialize the randomizer for positions
-    emitter_positions = std::make_shared<ChRandomParticlePositionRectangleOutlet>();
-    emitter_positions->OutletWidth() = 0.1; // default x outlet size, from CAD;
-    emitter_positions->OutletHeight() = 0.182; // default y outlet size, from CAD;
-    emitter.SetParticlePositioner(emitter_positions);
-
-    // ---Initialize the randomizer for alignments
-    emitter_rotations = std::make_shared<ChRandomParticleAlignmentUniform>();
-    emitter.SetParticleAligner(emitter_rotations);
-
-    // ---Initialize the randomizer for creations, with statistical distribution
-
-    // Create a ChRandomShapeCreator object (ex. here for metal particles)
-    std::shared_ptr<ChRandomShapeCreatorSpheres> mcreator_metal(new ChRandomShapeCreatorSpheres);
-    mcreator_metal->SetDiameterDistribution(std::make_shared<::ChMinMaxDistribution>(0.002, 0.003));
-
-    // Optional: define a callback to be exectuted at each creation of a metal particle:
-    class MyCreator_metal : public ChCallbackPostCreation
-    {
-        // Here do custom stuff on the just-created particle:
-    public:
-        virtual ~MyCreator_metal()
-        {
-        }
-
-        void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator) override
-        {
-            // Attach some optional visualization stuff
-            //std::shared_ptr<ChTexture> mtexture(new ChTexture);
-            //mtexture->SetTextureFilename("../objects/pinkwhite.png");
-            //mbody->AddAsset(mtexture);
-            std::shared_ptr<ChColorAsset> mvisual(new ChColorAsset);
-            mvisual->SetColor(ChColor(0.9f, 0.4f, 0.2f));
-            mbody->AddAsset(mvisual);
-            // Attach a custom asset. It will hold electrical properties
-            std::shared_ptr<ElectricParticleAsset> electric_asset(new ElectricParticleAsset);
-            electric_asset->e_fraction = ElectricParticleAsset::fraction_type::e_fraction_sphere;
-            electric_asset->SetMaterial(ElectricParticleAsset::material_type::e_mat_metal);
-            electric_asset->birthdate = this->systemreference->GetChTime();
-            ChVector<> Cradii; // use equivalent-inertia ellipsoid to get characteristic size:
-            ChVector<> Ine = mbody->GetInertiaXX();
-            Cradii.x = sqrt((5. / (2. * mbody->GetMass())) * (Ine.y + Ine.z - Ine.x));
-            Cradii.y = sqrt((5. / (2. * mbody->GetMass())) * (Ine.x + Ine.z - Ine.y));
-            Cradii.z = sqrt((5. / (2. * mbody->GetMass())) * (Ine.x + Ine.y - Ine.z));
-            electric_asset->Cdim = Cradii * 2.;
-            mbody->AddAsset(electric_asset);
-        }
-
-        // here put custom data that might be needed by the callback:
-        ChSystem* systemreference;
-    };
-
-    auto callback_metal = std::make_shared<MyCreator_metal>();
-    callback_metal->systemreference = &mphysicalSystem;
-    mcreator_metal->SetCallbackPostCreation(callback_metal.get());
-
-
-    // Create a ChRandomShapeCreator object (ex. here for metal particles)
-    auto mcreator_plastic = std::make_shared<ChRandomShapeCreatorSpheres>();
-    mcreator_plastic->SetDiameterDistribution(std::make_shared<ChMinMaxDistribution>(0.002, 0.002));
-
-    // Optional: define a callback to be exectuted at each creation of a plastic particle:
-    class MyCreator_plastic : public ChCallbackPostCreation
-    {
-        // Here do custom stuff on the just-created particle:
-    public:
-        virtual ~MyCreator_plastic()
-        {
-        }
-
-        void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator) override
-        {
-            // Attach some optional visualization stuff
-            //std::shared_ptr<ChTexture> mtexture(new ChTexture);
-            //mtexture->SetTextureFilename("../objects/bluwhite.png");
-            //mbody->AddAsset(mtexture);
-            std::shared_ptr<ChColorAsset> mvisual(new ChColorAsset);
-            mvisual->SetColor(ChColor(0.3f, 0.6f, 0.7f));
-            mbody->AddAsset(mvisual);
-            // Attach a custom asset. It will hold electrical properties
-            std::shared_ptr<ElectricParticleAsset> electric_asset(new ElectricParticleAsset);
-            electric_asset->e_fraction = ElectricParticleAsset::fraction_type::e_fraction_sphere;
-            electric_asset->SetMaterial(ElectricParticleAsset::material_type::e_mat_plastic);
-            electric_asset->birthdate = this->systemreference->GetChTime();
-            ChVector<> Cradii; // use equivalent-inertia ellipsoid to get characteristic size:
-            ChVector<> Ine = mbody->GetInertiaXX();
-            Cradii.x = sqrt((5. / (2. * mbody->GetMass())) * (Ine.y + Ine.z - Ine.x));
-            Cradii.y = sqrt((5. / (2. * mbody->GetMass())) * (Ine.x + Ine.z - Ine.y));
-            Cradii.z = sqrt((5. / (2. * mbody->GetMass())) * (Ine.x + Ine.y - Ine.z));
-            electric_asset->Cdim = Cradii * 2.;
-            mbody->AddAsset(electric_asset);
-
-            ++particlecounter;
-            mbody->SetIdentifier(particlecounter);
-        }
-
-        // here put custom data of the callback
-        ChSystem* systemreference;
-        int particlecounter;
-    };
-    auto callback_plastic = std::make_shared<MyCreator_plastic>();
-    callback_plastic->systemreference = &mphysicalSystem;
-    callback_plastic->particlecounter = 0;
-    mcreator_plastic->SetCallbackPostCreation(callback_plastic.get());
-
-
-    // Create a parent ChRandomShapeCreator that 'mixes' the two generators above,
-    // mixing them with a given percentual:
-    auto mcreatorTot = std::make_shared<ChRandomShapeCreatorFromFamilies>();
-    mcreatorTot->AddFamily(mcreator_metal, 0.4); // 1st creator family, with percentual
-    mcreatorTot->AddFamily(mcreator_plastic, 0.4); // 2nd creator family, with percentual
-    mcreatorTot->Setup();
-
-    // Finally, tell to the emitter that it must use the 'mixer' above:
-    emitter.SetParticleCreator(mcreatorTot);
-
-
-    // ---Initialize the randomizer for velocities, with statistical distribution
-
-    auto mvelo = std::make_shared<ChRandomParticleVelocityConstantDirection>();
-    mvelo->SetDirection(-VECT_Y);
-    mvelo->SetModulusDistribution(0.0);
-
-    emitter.SetParticleVelocity(mvelo);
 }
 
 void ElectrostaticCoronaSeparator::apply_forces(ChSystem* msystem)
@@ -491,9 +361,13 @@ bool ElectrostaticCoronaSeparator::LoadParticleScan(std::string filename)
 void ElectrostaticCoronaSeparator::create_debris_particlescan(double particles_second, ChSystem& mysystem, irrlicht::ChIrrApp* irr_application)
 {
     assert(scanned_particles.size() > 0);
+
     auto mmaterial = std::make_shared<ChMaterialSurface>();
     mmaterial->SetFriction(0.4f);
-    //mmaterial->SetImpactC(0.0f);
+    mmaterial->SetRollingFriction(0);
+    mmaterial->SetSpinningFriction(0);
+    mmaterial->SetRestitution(0);
+
 
     double xnozzle = -conveyor_length*0.25;
     double ynozzle = drum_diameter / 2 + 0.1;
@@ -582,63 +456,7 @@ void ElectrostaticCoronaSeparator::create_debris_particlescan(double particles_s
 }
 
 
-void ElectrostaticCoronaSeparator::create_debris_particlescan_original(double dt, double particles_second, ChSystem& mysystem, irrlicht::ChIrrApp* irr_application)
-{
-    assert(scanned_particles.size() > 0);
-    auto mmaterial = std::make_shared<ChMaterialSurface>();
-    mmaterial->SetFriction(0.4f);
-    //mmaterial->SetImpactC(0.0f);
 
-    double xnozzle = -conveyor_length*0.5;
-    double ynozzle = drum_diameter;
-
-
-    for (auto body_iter = scanned_particles.begin(); body_iter != scanned_particles.end(); ++body_iter)
-    {
-        auto elec_asset = std::shared_ptr<ElectricParticleAsset>();
-        GetAsset(*body_iter, elec_asset);
-        elec_asset->birthdate = mysystem.GetChTime();
-
-        (*body_iter)->SetPos(ChVector<>((ChRandom() - 0.5) * xnozzlesize + xnozzle, ynozzle, (ChRandom() - 0.5) * znozzlesize));
-        (*body_iter)->SetMaterialSurface(mmaterial);
-
-        mysystem.AddBody((*body_iter));
-
-        // If Irrlicht is used, setup also the visualization proxy:
-        if (irr_application)
-        {
-            irr_application->AssetBind((*body_iter));
-            irr_application->AssetUpdate((*body_iter));
-        }
-
-        bool do_velocity_clamping = true;
-
-        if ((*body_iter) && do_velocity_clamping)
-        {
-            (*body_iter)->SetLimitSpeed(true);
-            (*body_iter)->SetMaxSpeed(100);
-            (*body_iter)->SetMaxWvel(250);
-        }
-
-    }
-
-}
-
-
-template <typename asset_type = ElectricParticleAsset>
-bool GetAsset(const std::shared_ptr<ChBody>& body, std::shared_ptr<asset_type>& desired_asset)
-{
-    for (auto asset_iter = body->GetAssets().begin(); asset_iter != body->GetAssets().end(); ++asset_iter)
-    {
-        auto desired_asset_ptr = std::dynamic_pointer_cast<asset_type>(*asset_iter);
-        if (desired_asset_ptr)
-        {
-            desired_asset = desired_asset_ptr;
-            return true;
-        }
-    }
-    return false;
-}
 
 
 void ElectrostaticCoronaSeparator::purge_debris_byage(ChSystem& mysystem, double max_age)
@@ -673,7 +491,7 @@ void ElectrostaticCoronaSeparator::purge_debris_byposition(ChSystem& mysystem, C
     }
 }
 
-void ElectrostaticCoronaSeparator::DrawForces(irrlicht::ChIrrApp& application, double scalefactor)
+void ElectrostaticCoronaSeparator::drawForces(irrlicht::ChIrrApp& application, double scalefactor)
 {
     for (auto body_iter = application.GetSystem()->IterBeginBodies(); body_iter != application.GetSystem()->IterEndBodies(); ++body_iter)
     {
@@ -681,15 +499,19 @@ void ElectrostaticCoronaSeparator::DrawForces(irrlicht::ChIrrApp& application, d
         if (GetAsset(*body_iter, elec_ass))
         {
             ChVector<> custom_force = (*body_iter)->Get_accumulated_force();
+            double val = custom_force.Length() / 1e-4;
             custom_force *= scalefactor ? scalefactor : application.GetSymbolscale();
+            int r = static_cast<int>(255 * std::min(std::max(0.0, 1.5 - abs(1 - 4 * (val - 0.5))), 1.0));
+            int g = static_cast<int>(255 * std::min(std::max(0.0, 1.5 - abs(1 - 4 * (val - 0.25))), 1.0));
+            int b = static_cast<int>(255 * std::min(std::max(0.0, 1.5 - abs(1 - 4 * val)), 1.0));
             irrlicht::ChIrrTools::drawSegment(application.GetVideoDriver(),
-                (*body_iter)->GetPos(),
+                                              (*body_iter)->GetPos(),
                                               (*body_iter)->GetPos() + custom_force, irr::video::SColor(255, 0, 0, 255));
         }
     }
 }
 
-void ElectrostaticCoronaSeparator::UpdateTrajectories(irrlicht::ChIrrApp& application, bool only_those_on_drum)
+void ElectrostaticCoronaSeparator::updateTrajectories(irrlicht::ChIrrApp& application, bool only_those_on_drum)
 {
     for (auto body_iter = application.GetSystem()->IterBeginBodies(); body_iter != application.GetSystem()->IterEndBodies(); ++body_iter)
     {
@@ -701,7 +523,7 @@ void ElectrostaticCoronaSeparator::UpdateTrajectories(irrlicht::ChIrrApp& applic
     }
 }
 
-void ElectrostaticCoronaSeparator::DrawTrajectories(irrlicht::ChIrrApp& application, bool only_those_on_drum)
+void ElectrostaticCoronaSeparator::drawTrajectories(irrlicht::ChIrrApp& application, bool only_those_on_drum)
 {
     for (auto body_iter = application.GetSystem()->IterBeginBodies(); body_iter != application.GetSystem()->IterEndBodies(); ++body_iter)
     {
@@ -716,7 +538,11 @@ void ElectrostaticCoronaSeparator::DrawTrajectories(irrlicht::ChIrrApp& applicat
             {
                 double scalarspeed = iterator_speed->Length();
                 double normalizedspeed = scalarspeed / 5.0;
-                irr::video::SColor mcol(255, (int)(255. * normalizedspeed), (int)(255. * normalizedspeed), (int)(255. * (1.0 - normalizedspeed)));
+                int r = static_cast<int>(255*std::min(std::max(0.0, 1.5 - abs(1 - 4 * (normalizedspeed - 0.5))), 1.0));
+                int g = static_cast<int>(255*std::min(std::max(0.0, 1.5 - abs(1 - 4 * (normalizedspeed - 0.25))), 1.0));
+                int b = static_cast<int>(255*std::min(std::max(0.0, 1.5 - abs(1 - 4 * normalizedspeed)), 1.0));
+                irr::video::SColor mcol(r, g, b, 255);
+
                 irrlicht::ChIrrTools::drawSegment(application.GetVideoDriver(), *iteratorA, *iteratorB, mcol);
 
                 ++iteratorA;
@@ -731,10 +557,6 @@ void ElectrostaticCoronaSeparator::DrawTrajectories(irrlicht::ChIrrApp& applicat
 
 int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* application)
 {
-
-    emitter_positions->Outlet() = nozzle_csys;
-    emitter_positions->Outlet().rot.Q_from_AngAxis(CH_C_PI_2, VECT_X); // rotate outlet 90° on x
-
     auto mvisual_orange = std::make_shared<ChColorAsset>();
     mvisual_orange->SetColor(ChColor(0.9f, 0.4f, 0.2f));
 
@@ -747,7 +569,6 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     auto mtexture = std::make_shared<ChTexture>();
     mtexture->SetTextureFilename("cyltext.jpg");
 
-
     // DRUM: rotating cylinder with electrostatic charge
     auto mrigidBodyDrum = std::make_shared<ChBodyEasyCylinder>(drum_diameter / 2, drum_width, 7500, true, true);
     mrigidBodyDrum->SetNameString("drum");
@@ -757,7 +578,6 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     mrigidBodyDrum->GetMaterialSurface()->SetRollingFriction(0);
     mrigidBodyDrum->GetMaterialSurface()->SetSpinningFriction(0);
     mrigidBodyDrum->SetPos(ChVector<>(0, 0, 0));
-    //mrigidBodyDrum->SetPos(ChVector<>(conveyor_length / 2, -(drum_diameter*0.5) - conveyor_thick / 2, 0));
     mrigidBodyDrum->SetRot(ChQuaternion<>(sin(CH_C_PI_4), cos(CH_C_PI_4), 0, 0));
     system.AddBody(mrigidBodyDrum);
     mrigidBodyDrum->GetCollisionModel()->SetFamily(3);
@@ -771,6 +591,7 @@ int ElectrostaticCoronaSeparator::Setup(ChSystem& system, irrlicht::ChIrrApp* ap
     auto mrigidBodyConveyor = std::make_shared<ChBodyEasyBox>(conveyor_length, conveyor_thick, drum_width, true, true);
     mrigidBodyConveyor->SetNameString("conveyor");
     mrigidBodyConveyor->AddAsset(mvisual_grey);
+
     mrigidBodyConveyor->GetMaterialSurface()->SetFriction(0); // it was 0.2
     mrigidBodyConveyor->GetMaterialSurface()->SetRestitution(0);
     mrigidBodyConveyor->GetMaterialSurface()->SetRollingFriction(0);
@@ -904,56 +725,6 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
     application.AssetUpdateAll();
     application.AddShadowAll();
 
-    //
-    // What to do by default on ALL newly created particles? 
-    // A callback executed at each particle creation can be attached to the emitter..
-    // 
-
-    // a- define a class that implement your custom PostCreation method...
-    class MyCreatorForAll : public ChCallbackPostCreation
-    {
-    public:
-        virtual ~MyCreatorForAll()
-        {
-        }
-
-        void PostCreation(std::shared_ptr<ChBody> mbody, ChCoordsys<> mcoords, ChRandomShapeCreator& mcreator) override
-        {
-            // Set the friction properties (using a shared ChSurfaceMaterial
-            mbody->SetMaterialSurface(asurface_material);
-
-            // Attach an asset to show trajectories
-            //std::shared_ptr<ParticleTrajectory> massettraj(new ParticleTrajectory);
-            //mbody->AddAsset(massettraj);
-
-            // Enable Irrlicht visualization for all particles
-            airrlicht_application->AssetBind(mbody);
-            airrlicht_application->AssetUpdate(mbody);
-
-            // Enable POV visualization
-            if (apov_exporter)
-                apov_exporter->Add(mbody);
-
-            // Disable gyroscopic forces for increased integrator stabilty
-            mbody->SetNoGyroTorque(true);
-        }
-
-        irrlicht::ChIrrApp* airrlicht_application;
-        postprocess::ChPovRay* apov_exporter;
-        std::shared_ptr<ChMaterialSurface> asurface_material;
-    };
-    // b- create the callback object...
-    MyCreatorForAll* mcreation_callback = new MyCreatorForAll;
-    // c- set callback own data that he might need...
-    mcreation_callback->airrlicht_application = &application;
-    mcreation_callback->asurface_material = this->surface_particles;
-    if (this->save_POV_screenshots)
-        mcreation_callback->apov_exporter = &pov_exporter;
-    else
-        mcreation_callback->apov_exporter = nullptr;
-    // d- attach the callback to the emitter!
-    emitter.SetCallbackPostCreation(mcreation_callback);
-
 
     // 
     // PROCESS THE FLOW with these tools:
@@ -967,8 +738,8 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
     auto distrrectangle = std::make_shared<ChParticleEventFlowInRectangle>(flowmeter_length, flowmeter_width);
     distrrectangle->rectangle_csys = ChCoordsys<>(
         drum_csys.pos + ChVector<>(this->flowmeter_xmin + 0.5 * flowmeter_length,
-                                   this->flowmeter_y,
-                                   0), // position of center rectangle
+        this->flowmeter_y,
+        0), // position of center rectangle
         Q_from_AngAxis(-CH_C_PI_2, VECT_X)); // rotate rectangle so that its Z is up
     distrrectangle->margin = 0.05;
     //  -create the counter, with 20x10 resolution of sampling, on x y
@@ -982,9 +753,6 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
 
     // Create a remover, i.e. an object that takes care 
     // of removing particles that are inside or outside some volume.
-    // The fact that particles are handled with shared pointers means that,
-    // after they are removed from the ChSystem, they are also automatically
-    // deleted if no one else is referencing them.
     auto distrrectangle2 = std::make_shared<ChParticleEventFlowInRectangle>(0.20, 0.30);
     distrrectangle2->rectangle_csys = distrrectangle->rectangle_csys;
     distrrectangle2->margin = 0.05;
@@ -1029,10 +797,10 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
             apply_forces(application.GetSystem());
 
             if (receiver.checkbox_plotECSforces->isChecked())
-                DrawForces(application, ECSforces_scalefactor);
+                drawForces(application, ECSforces_scalefactor);
 
             if (receiver.checkbox_plottrajectories->isChecked())
-                DrawTrajectories(application, true);
+                drawTrajectories(application, true);
 
 
             //// Continuosly create debris that fall on the conveyor belt
@@ -1040,21 +808,12 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
 
             create_debris_particlescan(particle_flow, *application.GetSystem(), &application);
 
-            if (serial_communicator)
+            if (serial_communicator && totframes % 100 == 0)
             {
+                splitters[0].pos_x = static_cast<double>(rand() % 100)/100;
                 serial_communicator->UpdateMotorPosition(splitters);
                 //serial_communicator->SendCommand(EcsSerialCommunicator::message_output_t::MOTOR_HALT);
             }
-
-            //GetLog() << "Body positinos \n";
-            //for (auto body_iter = application.GetSystem()->IterBeginBodies(); body_iter != application.GetSystem()->IterEndBodies(); ++body_iter)
-            //{
-            //    GetLog() <<(*body_iter)->GetPos();
-            //}
-
-            //GetLog() << "Total mass=" << this->emitter.GetTotCreatedMass() << "   "
-            //    << "Total n.part=" << this->emitter.GetTotCreatedParticles() << "   "
-            //    << "Average kg/s=" << this->emitter.GetTotCreatedMass() / application.GetSystem()->GetChTime() << "\n";
 
 
             // Limit the max age (in seconds) of debris particles on the scene, 
@@ -1078,7 +837,7 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
             // update the assets containing the trajectories, if any
             if (receiver.checkbox_plottrajectories->isChecked())
                 if (totframes % 20 == 0)
-                    UpdateTrajectories(application, true);
+                    updateTrajectories(application, true);
 
             // Save data on file (each n integration steps, to avoid filling
             // the hard disk and to improve performance)
@@ -1159,42 +918,42 @@ int ElectrostaticCoronaSeparator::RunSimulation(irrlicht::ChIrrApp& application)
             } // end saving code
         }
 
-        //// Just for fun, plot the distribution matrices, 
-        //// i.e. countdistribution->mmass_plastic etc.
-        //// In this case, normalize to integral , and scale on Z
-        //double yscalefactor_plastic;
-        //double totmass_plastic = 0;
-        //for (int ir = 0; ir < countdistribution->mmass_plastic.GetRows(); ++ir)
-        //    for (int ic = 0; ic < countdistribution->mmass_plastic.GetColumns(); ++ic)
-        //        totmass_plastic += countdistribution->mmass_plastic(ir, ic);
-        //if (totmass_plastic == 0)
-        //    yscalefactor_plastic = 0; // if not yet particle passed through sampling rectangle
-        //else
-        //    yscalefactor_plastic = (0.002 * countdistribution->mmass_plastic.GetRows() * countdistribution->mmass_plastic.GetColumns()) / totmass_plastic;
+        // Just for fun, plot the distribution matrices, 
+        // i.e. countdistribution->mmass_plastic etc.
+        // In this case, normalize to integral , and scale on Z
+        double yscalefactor_plastic;
+        double totmass_plastic = 0;
+        for (int ir = 0; ir < countdistribution->mmass_plastic.GetRows(); ++ir)
+            for (int ic = 0; ic < countdistribution->mmass_plastic.GetColumns(); ++ic)
+                totmass_plastic += countdistribution->mmass_plastic(ir, ic);
+        if (totmass_plastic == 0)
+            yscalefactor_plastic = 0; // if not yet particle passed through sampling rectangle
+        else
+            yscalefactor_plastic = (0.002 * countdistribution->mmass_plastic.GetRows() * countdistribution->mmass_plastic.GetColumns()) / totmass_plastic;
 
-        //drawDistribution(application.GetVideoDriver(),
-        //                 countdistribution->mmass_plastic * yscalefactor_plastic,
-        //                 distrrectangle->rectangle_csys,
-        //                 distrrectangle->Xsize,
-        //                 distrrectangle->Ysize,
-        //                 irr::video::SColor(255, 255, 0, 0));
+        drawDistribution(application.GetVideoDriver(),
+                         countdistribution->mmass_plastic * yscalefactor_plastic,
+                         distrrectangle->rectangle_csys,
+                         distrrectangle->Xsize,
+                         distrrectangle->Ysize,
+                         irr::video::SColor(255, 255, 0, 0));
 
-        //double yscalefactor_metal;
-        //double totmass_metal = 0;
-        //for (int ir = 0; ir < countdistribution->mmass_metal.GetRows(); ++ir)
-        //    for (int ic = 0; ic < countdistribution->mmass_metal.GetColumns(); ++ic)
-        //        totmass_metal += countdistribution->mmass_metal(ir, ic);
-        //if (totmass_plastic == 0)
-        //    yscalefactor_metal = 0; // if not yet particle passed through sampling rectangle
-        //else
-        //    yscalefactor_metal = (0.002 * countdistribution->mmass_metal.GetRows() * countdistribution->mmass_metal.GetColumns()) / totmass_metal;
+        double yscalefactor_metal;
+        double totmass_metal = 0;
+        for (int ir = 0; ir < countdistribution->mmass_metal.GetRows(); ++ir)
+            for (int ic = 0; ic < countdistribution->mmass_metal.GetColumns(); ++ic)
+                totmass_metal += countdistribution->mmass_metal(ir, ic);
+        if (totmass_plastic == 0)
+            yscalefactor_metal = 0; // if not yet particle passed through sampling rectangle
+        else
+            yscalefactor_metal = (0.002 * countdistribution->mmass_metal.GetRows() * countdistribution->mmass_metal.GetColumns()) / totmass_metal;
 
-        //drawDistribution(application.GetVideoDriver(),
-        //                 countdistribution->mmass_metal * yscalefactor_metal,
-        //                 distrrectangle->rectangle_csys,
-        //                 distrrectangle->Xsize,
-        //                 distrrectangle->Ysize,
-        //                 irr::video::SColor(255, 0, 255, 255));
+        drawDistribution(application.GetVideoDriver(),
+                         countdistribution->mmass_metal * yscalefactor_metal,
+                         distrrectangle->rectangle_csys,
+                         distrrectangle->Xsize,
+                         distrrectangle->Ysize,
+                         irr::video::SColor(255, 0, 255, 255));
 
 
         application.GetVideoDriver()->endScene();
