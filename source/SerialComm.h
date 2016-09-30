@@ -234,7 +234,8 @@ private:
             return;
         }
 
-        std::cout << "Received: "<< str_str.str();
+        if (!str_str.str().empty())
+            std::cout << "Received: " << str_str.str();
         std::cout.flush();//Flush screen buffer
     }
 
@@ -274,12 +275,10 @@ private:
                 auto tx_max_attempts = 3;
                 std::unique_lock<std::mutex> lock_for_ack(waiting_for_ack);
                 ack_received = false;
-                //sending_message = true; // can be removed if we are sure that notifying before actually waiting, does not trigger the wait
                 for (auto retry_sel = 0; retry_sel < tx_max_attempts; retry_sel++)
                 {
                     // we cannot rely on wait_for timer!!!! need to use additional variable
-                    auto ack_signal_return = ack_signal.wait_for(lock_for_ack, std::chrono::milliseconds(3000), [=](){return ack_received;});
-                    if (!ack_signal_return)
+                    if (!ack_signal.wait_for(lock_for_ack, std::chrono::milliseconds(3000), [=]() {return ack_received; }))
                     {
                         std::cout << "No ACK received for: " << local_string.substr(0, local_string.size()-1) << "; attempt " << retry_sel + 1 << " of " << tx_max_attempts << std::endl;
                     }
@@ -288,10 +287,9 @@ private:
                         std::cout << "Daemon succesfully sent: " << local_string.substr(0, local_string.size() - 1) << std::endl;
                         break;
                     }
-                    std::lock_guard<std::mutex> temp{ operating_on_queue };
-                    message_queue.pop_front();
                 }
-                //sending_message = false;
+                std::lock_guard<std::mutex> temp{ operating_on_queue };
+                message_queue.pop_front();
             }
             else
             {
